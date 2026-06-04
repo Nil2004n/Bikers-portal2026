@@ -1,0 +1,55 @@
+# ========================
+# Java / Maven Build Output
+# ========================
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.zip
+*.tar.gz
+*.rar
+
+# Maven wrapper
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ========================
+# Spring Boot / IDE
+# ========================
+.idea/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+*.eclipse
+
+# ========================
+# Secrets / Config
+# ========================
+application-prod.yml
+application-prod.properties
+*.env
+.env
+.env.*
+secrets.yml
+
+# ========================
+# Frontend
+# ========================
+node_modules/
+dist/
+.cache/
+
+# ========================
+# OS & Editor
+# ========================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
