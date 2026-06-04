@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" aria-label="Bikers Portal logo">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#01696f"/>
+      <stop offset="100%" stop-color="#0c4e54"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="64" height="64" rx="14" fill="url(#bg)"/>
+  <g fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="17" cy="44" r="9"/>
+    <circle cx="47" cy="44" r="9"/>
+    <path d="M17 44l8-18 11 4 11 14"/>
+    <path d="M25 26l5-9h7"/>
+    <path d="M38 30l-5-4"/>
+    <path d="M32 17v9"/>
+  </g>
+  <circle cx="47" cy="44" r="2" fill="#ffffff"/>
+  <circle cx="17" cy="44" r="2" fill="#ffffff"/>
+</svg>

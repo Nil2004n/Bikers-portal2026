@@ -1,498 +1,664 @@
 /* ============================================================
-   feed.js — Module 1.0: Media Feed
-   Routes: #feed
-   API:
-     GET  /api/feed                 paginated posts (page, limit)
-     POST /api/feed                 create post
-     POST /api/feed/:id/like        toggle like
-     POST /api/feed/:id/comments    add comment
-     GET  /api/feed/:id/comments    fetch comments
-     DELETE /api/feed/:id          delete own post
+   modules/feed.js — FeedModule
+   Bikers Portal • frontend
    ============================================================ */
+(function (global) {
+  'use strict';
 
-window.FeedModule = (() => {
+  const u = global.utils;
+  const api = global.apiFetch;
 
-  /* ── State ────────────────────────────────────────────── */
-  let posts       = [];
-  let page        = 1;
-  let hasMore     = true;
-  let loading     = false;
-  let likedIds    = new Set();
+  const TRENDING_TAGS = [
+    { tag: '#MTBLife',        count: 1284 },
+    { tag: '#RoadCycling',    count: 982  },
+    { tag: '#EBike',          count: 1617 },
+    { tag: '#CyclingIndia',   count: 2403 },
+    { tag: '#FixedGear',      count: 421  },
+    { tag: '#BikePacking',    count: 738  },
+    { tag: '#CyclingTips',    count: 514  },
+    { tag: '#SunriseRide',    count: 296  }
+  ];
 
-  /* ── Shell ────────────────────────────────────────────── */
-  function renderShell() {
-    return `
-    <div class="feed-layout">
-      <!-- Feed column -->
-      <div>
-        <div class="page-header" style="margin-bottom:var(--space-5);">
-          <div class="page-header__text">
-            <h1 class="page-title">Community Feed</h1>
-            <p class="page-subtitle">Stories, tips and rides from the biker community.</p>
-          </div>
-        </div>
+  const ACTIVE_RIDERS = [
+    { name: 'Aarav Sharma',  rides: 42, initial: 'A' },
+    { name: 'Priya Iyer',    rides: 38, initial: 'P' },
+    { name: 'Karan Patel',   rides: 27, initial: 'K' },
+    { name: 'Neha Kapoor',   rides: 19, initial: 'N' }
+  ];
 
-        <!-- Compose card -->
-        <div class="card" id="compose-card" style="margin-bottom:var(--space-5);">
-          <div style="display:flex;gap:var(--space-3);align-items:flex-start;">
-            <div class="avatar avatar-md" id="compose-avatar" style="background:var(--color-primary-highlight);color:var(--color-primary);flex-shrink:0;">R</div>
-            <textarea id="compose-text" class="form-control"
-              rows="2" placeholder="Share a ride, tip or photo…"
-              style="resize:none;flex:1;"
-              maxlength="1000" aria-label="Write a post"></textarea>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:var(--space-3);flex-wrap:wrap;gap:var(--space-3);">
-            <div style="display:flex;gap:var(--space-2);">
-              <label class="btn btn-ghost btn-sm" style="cursor:pointer;" title="Attach image">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                Photo
-                <input type="file" id="compose-image" accept="image/*" style="display:none;" />
-              </label>
-            </div>
-            <div style="display:flex;align-items:center;gap:var(--space-3);">
-              <span id="compose-char" style="font-size:var(--text-xs);color:var(--color-text-faint);">0 / 1000</span>
-              <button class="btn btn-primary btn-sm" id="post-submit-btn" disabled>Post</button>
-            </div>
-          </div>
-          <div id="compose-preview" style="display:none;margin-top:var(--space-3);position:relative;">
-            <img id="compose-preview-img" src="" alt="Preview" style="max-height:200px;border-radius:var(--radius-md);object-fit:cover;width:100%;" />
-            <button id="compose-remove-img" style="position:absolute;top:var(--space-2);right:var(--space-2);" class="btn btn-ghost btn-icon btn-sm" aria-label="Remove image">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-          <div id="compose-alert" class="alert alert-error" style="display:none;margin-top:var(--space-3);" role="alert">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
-            <span id="compose-alert-msg"></span>
-          </div>
-        </div>
+  const state = {
+    page: 1,
+    limit: 10,
+    posts: [],
+    loading: false,
+    hasMore: true,
+    total: 0,
+    activeTag: null,
+    currentPostId: null,
+    attachedImage: null
+  };
 
-        <!-- Post list -->
-        <div id="feed-list" aria-live="polite" aria-label="Community posts"></div>
+  function el(id) { return document.getElementById(id); }
 
-        <!-- Load more -->
-        <div id="feed-load-more" style="text-align:center;margin-top:var(--space-6);display:none;">
-          <button class="btn btn-outline" id="load-more-btn">Load More</button>
-        </div>
-
-        <!-- End of feed -->
-        <div id="feed-end" style="text-align:center;padding:var(--space-8);color:var(--color-text-faint);font-size:var(--text-sm);display:none;">
-          You've reached the end of the feed.
-        </div>
-      </div>
-
-      <!-- Sidebar -->
-      <aside class="feed-sidebar">
-        <!-- Trending tags -->
-        <div class="card" style="margin-bottom:var(--space-5);">
-          <div class="card-header">
-            <h2 class="card-title" style="font-size:var(--text-base);">Trending Tags</h2>
-          </div>
-          <div id="trending-tags" style="display:flex;flex-wrap:wrap;gap:var(--space-2);margin-top:var(--space-2);">
-            ${['#MTBLife','#RoadCycling','#EBike','#CyclingIndia','#FixedGear','#BikePacking']
-              .map(t => `<span class="filter-chip" style="cursor:pointer;">${t}</span>`).join('')}
-          </div>
-        </div>
-
-        <!-- Who to follow placeholder -->
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title" style="font-size:var(--text-base);">Active Riders</h2>
-          </div>
-          <div id="active-riders">
-            ${[
-              {name:'Priya S.',   handle:'@priya_mtb',   rides:142},
-              {name:'Raj Kumar',  handle:'@rajrides',    rides:98},
-              {name:'Anita D.',   handle:'@anitacycles',  rides:77},
-            ].map(r => `
-            <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) 0;border-bottom:1px solid var(--color-divider);">
-              <div class="avatar avatar-sm" style="background:var(--color-primary-highlight);color:var(--color-primary);flex-shrink:0;">${r.name[0]}</div>
-              <div style="flex:1;min-width:0;">
-                <div style="font-size:var(--text-sm);font-weight:600;color:var(--color-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.name}</div>
-                <div style="font-size:var(--text-xs);color:var(--color-text-muted);">${r.rides} rides</div>
-              </div>
-            </div>`).join('')}
-          </div>
-        </div>
-      </aside>
-    </div>
-
-    <!-- Comments Modal -->
-    <div class="modal-backdrop" id="comments-modal" role="dialog" aria-modal="true" aria-labelledby="comments-modal-title">
-      <div class="modal" style="max-width:520px;">
-        <div class="modal-header">
-          <h2 class="modal-title" id="comments-modal-title">Comments</h2>
-          <button class="modal-close btn btn-ghost btn-icon" id="comments-modal-close" aria-label="Close">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div id="comments-list" style="max-height:320px;overflow-y:auto;margin-bottom:var(--space-4);"></div>
-          <div class="form-group">
-            <textarea id="comment-text" class="form-control" rows="2" placeholder="Write a comment…" maxlength="500"></textarea>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-ghost" id="comments-close-2">Cancel</button>
-          <button class="btn btn-primary" id="comment-submit-btn">Comment</button>
-        </div>
-      </div>
-    </div>`;
+  function initialsOf(name) {
+    return u.initialsFromName(name);
   }
 
-  /* ── Post card ────────────────────────────────────────── */
-  function postCard(p) {
-    const liked    = likedIds.has(p.id);
-    const timeAgo  = relativeTime(p.createdAt);
-    const user     = p.user || {};
-    const initial  = (user.name || 'R')[0].toUpperCase();
-    const isOwn    = window.AppState?.user?.id === user.id;
+  function postCardHTML(post) {
+    const name = (post.user && (post.user.name || post.user.username)) || post.author || 'Rider';
+    const initial = initialsOf(name);
+    const colorIdx = post.user && post.user.avatarColor ? post.user.avatarColor : ((post._id || post.id || '').toString().charCodeAt(0) % 6) + 1;
+    const content = u.escHtml(post.content || '');
+    const image = post.image || post.imageBase64 || post.imageUrl;
+    const time = u.relativeTime(post.createdAt || post.timestamp);
+    const likes = post.likesCount != null ? post.likesCount : (post.likes && post.likes.length) || 0;
+    const comments = post.commentsCount != null ? post.commentsCount : (post.comments && post.comments.length) || 0;
+    const liked = post.liked || (post.likes && post.likes.indexOf(global.auth.getUserId()) !== -1);
+    const tagsArr = (post.tags && post.tags.length) ? post.tags : [];
+    const postId = post.id || post._id;
+    const isOwn = post.userId === global.auth.getUserId() || (post.user && (post.user.id || post.user._id) === global.auth.getUserId());
 
-    return `
-    <article class="card post-card" data-post-id="${p.id}" style="margin-bottom:var(--space-4);">
-      <div class="post-card__header">
-        <div class="avatar avatar-md" style="background:var(--color-primary-highlight);color:var(--color-primary);flex-shrink:0;">${initial}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-weight:600;font-size:var(--text-sm);color:var(--color-text);">${escHtml(user.name || 'Rider')}</div>
-          <div style="font-size:var(--text-xs);color:var(--color-text-muted);">${timeAgo}</div>
-        </div>
-        ${isOwn ? `
-        <div class="dropdown">
-          <button class="btn btn-ghost btn-icon btn-sm post-menu-btn" aria-label="Post options" aria-haspopup="true" aria-expanded="false" data-post-id="${p.id}">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
-          </button>
-          <div class="dropdown-menu">
-            <button class="dropdown-item danger delete-post-btn" data-post-id="${p.id}">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-              Delete post
-            </button>
-          </div>
-        </div>` : ''}
-      </div>
+    let tagsHtml = '';
+    if (tagsArr.length) {
+      tagsHtml = '<div class="post-card__tags">' +
+        tagsArr.map(function (t) { return '<span class="tag">#' + u.escHtml(t.replace(/^#/, '')) + '</span>'; }).join('') +
+        '</div>';
+    }
 
-      <div class="post-card__content">${escHtml(p.content || '')}</div>
+    let imageHtml = '';
+    if (image) {
+      imageHtml = '<img class="post-card__image" src="' + u.escHtml(image) + '" alt="Post image" loading="lazy" width="800" height="480">';
+    }
 
-      ${p.imageUrl ? `<img class="post-card__image" src="${escHtml(p.imageUrl)}" alt="Post image" loading="lazy" width="560" height="315" onerror="this.style.display='none'" />` : ''}
+    let menuHtml = '';
+    if (isOwn) {
+      menuHtml =
+        '<div class="menu" data-menu>' +
+          '<button class="icon-btn" aria-label="Post options" data-menu-toggle>' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="19" r="1.5" fill="currentColor"/></svg>' +
+          '</button>' +
+          '<div class="menu__panel" role="menu">' +
+            '<button type="button" class="menu__item menu__item--danger" role="menuitem" data-delete-post="' + u.escHtml(postId) + '">' +
+              '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>' +
+              'Delete post' +
+            '</button>' +
+          '</div>' +
+        '</div>';
+    }
 
-      ${(p.tags||[]).length ? `
-      <div style="display:flex;gap:var(--space-2);flex-wrap:wrap;margin-top:var(--space-3);">
-        ${p.tags.map(t=>`<span class="badge badge-neutral">${escHtml(t)}</span>`).join('')}
-      </div>` : ''}
-
-      <div class="post-card__actions">
-        <button class="post-card__action-btn like-btn${liked?' liked':''}" data-post-id="${p.id}" aria-pressed="${liked}" aria-label="Like post">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="${liked?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          <span class="like-count">${p.likeCount || 0}</span>
-        </button>
-        <button class="post-card__action-btn comment-btn" data-post-id="${p.id}" aria-label="View comments">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <span>${p.commentCount || 0}</span>
-        </button>
-        <button class="post-card__action-btn share-btn" data-post-id="${p.id}" aria-label="Share post" style="margin-left:auto;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-          Share
-        </button>
-      </div>
-    </article>`;
+    return [
+      '<article class="card post-card" data-post-id="' + u.escHtml(postId) + '">',
+      '  <header class="post-card__head">',
+      '    <div class="avatar" data-color="' + colorIdx + '">' + u.escHtml(initial) + '</div>',
+      '    <div class="post-card__user">',
+      '      <div class="post-card__name">' + u.escHtml(name) + '</div>',
+      '      <div class="post-card__meta">' +
+            '<span>' + time + '</span>' +
+            (post.location ? '<span aria-hidden="true">·</span><span>' + u.escHtml(post.location) + '</span>' : '') +
+          '</div>',
+      '    </div>',
+        menuHtml,
+      '  </header>',
+      '  <div class="post-card__content">' + content + '</div>',
+        imageHtml,
+        tagsHtml,
+      '  <div class="post-card__actions">',
+      '    <button type="button" class="post-action" data-like-btn aria-pressed="' + (liked ? 'true' : 'false') + '">',
+      '      <svg class="post-action__icon" viewBox="0 0 24 24" fill="' + (liked ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">',
+      '        <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z"/>',
+      '      </svg>',
+      '      <span class="post-action__count" data-like-count>' + likes + '</span>',
+      '      <span>Like</span>',
+      '    </button>',
+      '    <button type="button" class="post-action" data-comments-btn>',
+      '      <svg class="post-action__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">',
+      '        <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/>',
+      '      </svg>',
+      '      <span class="post-action__count" data-comments-count>' + comments + '</span>',
+      '      <span>Comment</span>',
+      '    </button>',
+      '    <button type="button" class="post-action" data-share-btn>',
+      '      <svg class="post-action__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">',
+      '        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>',
+      '        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>',
+      '      </svg>',
+      '      <span>Share</span>',
+      '    </button>',
+      '  </div>',
+      '</article>'
+    ].join('\n');
   }
 
-  /* ── Comment item ─────────────────────────────────────── */
-  function commentItem(c) {
-    const initial = (c.user?.name || 'R')[0].toUpperCase();
-    return `
-    <div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-4);">
-      <div class="avatar avatar-sm" style="background:var(--color-surface-offset);color:var(--color-text-muted);flex-shrink:0;">${initial}</div>
-      <div style="flex:1;">
-        <div style="font-size:var(--text-xs);font-weight:600;color:var(--color-text);">${escHtml(c.user?.name||'Rider')}</div>
-        <div style="font-size:var(--text-sm);color:var(--color-text);margin-top:2px;line-height:1.55;">${escHtml(c.content||'')}</div>
-        <div style="font-size:var(--text-xs);color:var(--color-text-faint);margin-top:4px;">${relativeTime(c.createdAt)}</div>
-      </div>
-    </div>`;
+  function renderSkeletons(count) {
+    let html = '';
+    for (let i = 0; i < count; i++) html += u.skeletonPostCard();
+    return html;
   }
 
-  /* ── Load feed ────────────────────────────────────────── */
-  async function loadFeed(reset = false) {
-    if (loading) return;
-    loading = true;
+  function renderTrending() {
+    const wrap = el('trending-tags');
+    if (!wrap) return;
+    wrap.innerHTML = TRENDING_TAGS.map(function (t) {
+      return '<button type="button" class="chip chip--ghost" data-tag="' + u.escHtml(t.tag) + '" aria-pressed="' + (state.activeTag === t.tag ? 'true' : 'false') + '">' +
+        u.escHtml(t.tag) + ' <span style="color:var(--color-text-faint);font-size:var(--text-xs);margin-left:4px;">' + t.count + '</span>' +
+      '</button>';
+    }).join('');
 
-    if (reset) { page = 1; hasMore = true; posts = []; }
+    wrap.querySelectorAll('[data-tag]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const tag = btn.getAttribute('data-tag');
+        state.activeTag = (state.activeTag === tag) ? null : tag;
+        state.page = 1;
+        state.posts = [];
+        state.hasMore = true;
+        const list = el('feed-list');
+        if (list) list.innerHTML = renderSkeletons(3);
+        loadFeed();
+      });
+    });
+  }
 
-    const list = document.getElementById('feed-list');
-    if (!list) { loading = false; return; }
+  function renderActiveRiders() {
+    const wrap = el('active-riders');
+    if (!wrap) return;
+    wrap.innerHTML = ACTIVE_RIDERS.map(function (r, i) {
+      return [
+        '<div class="rider">',
+        '  <div class="avatar avatar--md" data-color="' + ((i % 6) + 1) + '">' + u.escHtml(r.initial) + '</div>',
+        '  <div class="rider__info">',
+        '    <div class="rider__name">' + u.escHtml(r.name) + '</div>',
+        '    <div class="rider__stat">' + r.rides + ' rides</div>',
+        '  </div>',
+        '  <button class="btn btn--sm btn--secondary" data-follow-rider="' + u.escHtml(r.name) + '">Follow</button>',
+        '</div>'
+      ].join('\n');
+    }).join('');
 
-    if (page === 1) list.innerHTML = skeletonFeed(3);
+    wrap.querySelectorAll('[data-follow-rider]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const name = btn.getAttribute('data-follow-rider');
+        const following = btn.getAttribute('aria-pressed') === 'true';
+        btn.setAttribute('aria-pressed', following ? 'false' : 'true');
+        btn.textContent = following ? 'Follow' : 'Following';
+        u.showToast((following ? 'Unfollowed ' : 'Following ') + name, 'success', 2000);
+      });
+    });
+  }
+
+  function appendPosts(posts, replace) {
+    const list = el('feed-list');
+    if (!list) return;
+
+    if (replace) {
+      list.innerHTML = posts.length ? posts.map(postCardHTML).join('\n') : u.emptyState({
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>',
+        title: 'No posts yet',
+        message: 'Be the first to share something with the community.',
+        actionLabel: 'Write a post'
+      });
+    } else {
+      list.insertAdjacentHTML('beforeend', posts.map(postCardHTML).join('\n'));
+    }
+
+    bindPostCards(list);
+  }
+
+  function bindPostCards(scope) {
+    const root = scope || document;
+    root.querySelectorAll('[data-post-id]').forEach(function (card) {
+      const id = card.getAttribute('data-post-id');
+      const likeBtn = card.querySelector('[data-like-btn]');
+      if (likeBtn && !likeBtn.dataset.bound) {
+        likeBtn.dataset.bound = '1';
+        likeBtn.addEventListener('click', function () { toggleLike(id, card, likeBtn); });
+      }
+      const cmtBtn = card.querySelector('[data-comments-btn]');
+      if (cmtBtn && !cmtBtn.dataset.bound) {
+        cmtBtn.dataset.bound = '1';
+        cmtBtn.addEventListener('click', function () { openComments(id, card); });
+      }
+      const shareBtn = card.querySelector('[data-share-btn]');
+      if (shareBtn && !shareBtn.dataset.bound) {
+        shareBtn.dataset.bound = '1';
+        shareBtn.addEventListener('click', function () { sharePost(id); });
+      }
+      const deleteBtn = card.querySelector('[data-delete-post]');
+      if (deleteBtn && !deleteBtn.dataset.bound) {
+        deleteBtn.dataset.bound = '1';
+        deleteBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          const menuEl = deleteBtn.closest('.menu');
+          if (menuEl) menuEl.classList.remove('is-open');
+          deletePost(id, card);
+        });
+      }
+      const menuToggle = card.querySelector('[data-menu-toggle]');
+      const menu = card.querySelector('[data-menu]');
+      if (menuToggle && menu && !menuToggle.dataset.bound) {
+        menuToggle.dataset.bound = '1';
+        menuToggle.addEventListener('click', function (e) {
+          e.stopPropagation();
+          document.querySelectorAll('.menu.is-open').forEach(function (m) { if (m !== menu) m.classList.remove('is-open'); });
+          menu.classList.toggle('is-open');
+        });
+      }
+    });
+  }
+
+  async function loadFeed() {
+    if (state.loading || !state.hasMore) return;
+    state.loading = true;
+
+    const list = el('feed-list');
+    const loadMore = el('feed-load-more');
+    const endMsg = el('feed-end');
+
+    if (loadMore) loadMore.disabled = true;
 
     try {
-      const res = await window.AppApi.get(`/feed?page=${page}&limit=10`);
-      const newPosts = res.data || res.posts || res || [];
-      if (reset || page === 1) { posts = newPosts; list.innerHTML = ''; }
-      else posts = [...posts, ...newPosts];
+      const params = new URLSearchParams();
+      params.set('page', String(state.page));
+      params.set('limit', String(state.limit));
+      if (state.activeTag) params.set('tag', state.activeTag);
 
-      if (!newPosts.length || newPosts.length < 10) hasMore = false;
+      const response = await api('/api/feed?' + params.toString());
+      const items = (response && (response.items || response.posts || response.data || response)) || [];
+      const total = (response && response.total) || 0;
+      const hasMore = (response && typeof response.hasMore === 'boolean') ? response.hasMore : (items.length === state.limit);
 
-      if (!posts.length) {
-        list.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-state__icon"><svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
-            <h3>No posts yet</h3>
-            <p>Be the first to share a ride or tip with the community.</p>
-          </div>`;
-      } else if (page === 1) {
-        list.innerHTML = posts.map(postCard).join('');
-        bindPostEvents(list);
+      state.posts = state.page === 1 ? items : state.posts.concat(items);
+      state.total = total;
+      state.hasMore = hasMore;
+
+      appendPosts(items, state.page === 1);
+    } catch (e) {
+      console.error('loadFeed error', e);
+      if (list) {
+        list.innerHTML = '<div class="card">' +
+          '<div class="alert alert--error"><div class="alert__content">' +
+          '<div class="alert__title">Could not load feed</div>' +
+          '<div class="alert__message">' + u.escHtml(e.message || 'Network error') + '</div>' +
+          '</div></div></div>';
+      }
+      if (global.utils && global.utils.showToast) u.showToast('Failed to load feed', 'error');
+    } finally {
+      state.loading = false;
+      if (loadMore) loadMore.disabled = false;
+      if (endMsg) endMsg.hidden = state.hasMore;
+      if (loadMore) loadMore.hidden = !state.hasMore;
+    }
+  }
+
+  async function submitPost() {
+    const textEl = el('compose-text');
+    const btn = el('post-submit-btn');
+    const alertEl = el('compose-alert');
+    if (!textEl || !btn) return;
+
+    const content = (textEl.value || '').trim();
+    if (!content) {
+      showComposeAlert('Please write something before posting.', 'error');
+      return;
+    }
+    if (content.length > 1000) {
+      showComposeAlert('Posts are limited to 1000 characters.', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-spinner"></span> Posting...';
+    if (alertEl) alertEl.innerHTML = '';
+
+    try {
+      const body = { content: content };
+      if (state.attachedImage) body.imageBase64 = state.attachedImage;
+
+      const tags = extractHashtags(content);
+      if (tags.length) body.tags = tags;
+
+      const newPost = await api('/api/feed', { method: 'POST', body: body });
+      if (newPost && (newPost.id || newPost._id)) {
+        const list = el('feed-list');
+        if (list) {
+          const empty = list.querySelector('.empty-state');
+          if (empty) list.innerHTML = '';
+          list.insertAdjacentHTML('afterbegin', postCardHTML(newPost));
+          bindPostCards(list);
+        }
       } else {
-        const frag = document.createElement('div');
-        frag.innerHTML = newPosts.map(postCard).join('');
-        while (frag.firstChild) list.appendChild(frag.firstChild);
-        bindPostEvents(list);
+        state.page = 1;
+        state.hasMore = true;
+        const list = el('feed-list');
+        if (list) list.innerHTML = renderSkeletons(3);
+        await loadFeed();
       }
 
-      const loadMore = document.getElementById('feed-load-more');
-      const endEl    = document.getElementById('feed-end');
-      if (loadMore) loadMore.style.display = hasMore ? 'block' : 'none';
-      if (endEl)    endEl.style.display    = !hasMore && posts.length ? 'block' : 'none';
-
-      page++;
-    } catch {
-      if (page === 1) list.innerHTML = `<div class="alert alert-error"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>Could not load feed. Please try again.</div>`;
+      textEl.value = '';
+      updateCharCounter();
+      removeAttachedImage();
+      u.showToast('Post shared with the community!', 'success');
+    } catch (e) {
+      console.error('submitPost error', e);
+      showComposeAlert(e.message || 'Failed to publish post', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML =
+        '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>' +
+        ' Post';
     }
-    loading = false;
   }
 
-  /* ── Bind events on rendered posts ───────────────────── */
-  function bindPostEvents(container) {
-    // Like buttons
-    container.querySelectorAll('.like-btn').forEach(btn => {
-      btn.addEventListener('click', () => toggleLike(btn));
-    });
-    // Comment buttons
-    container.querySelectorAll('.comment-btn').forEach(btn => {
-      btn.addEventListener('click', () => openComments(btn.dataset.postId));
-    });
-    // Share buttons
-    container.querySelectorAll('.share-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        navigator.clipboard?.writeText(window.location.href + '?post=' + btn.dataset.postId)
-          .then(() => window.showToast('Link copied!', 'success'))
-          .catch(() => window.showToast('Could not copy link.', 'error'));
-      });
-    });
-    // Post dropdown menus
-    container.querySelectorAll('.post-menu-btn').forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.stopPropagation();
-        const dd = btn.nextElementSibling;
-        const open = dd.classList.toggle('active');
-        // Reuse dropdown open class by toggling parent
-        btn.closest('.dropdown').classList.toggle('open', open);
-        btn.setAttribute('aria-expanded', String(open));
-      });
-    });
-    // Delete post
-    container.querySelectorAll('.delete-post-btn').forEach(btn => {
-      btn.addEventListener('click', () => deletePost(btn.dataset.postId));
-    });
-    document.addEventListener('click', () => {
-      container.querySelectorAll('.dropdown.open').forEach(d => d.classList.remove('open'));
+  function extractHashtags(text) {
+    const re = /#([a-zA-Z0-9_]+)/g;
+    const tags = [];
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const tag = m[1];
+      if (tag.length <= 30 && tags.indexOf(tag) === -1) tags.push(tag);
+    }
+    return tags;
+  }
+
+  function showComposeAlert(msg, type) {
+    const alertEl = el('compose-alert');
+    if (!alertEl) return;
+    const cls = (type === 'success') ? 'alert--success' : 'alert--error';
+    alertEl.innerHTML = '<div class="alert ' + cls + '"><div class="alert__content">' + u.escHtml(msg) + '</div></div>';
+  }
+
+  function updateCharCounter() {
+    const textEl = el('compose-text');
+    const counter = el('compose-char');
+    const btn = el('post-submit-btn');
+    if (!textEl || !counter) return;
+    const len = (textEl.value || '').length;
+    counter.textContent = len + ' / 1000';
+    counter.style.color = len > 950 ? 'var(--color-warning)' : (len > 990 ? 'var(--color-error)' : 'var(--color-text-muted)');
+    if (btn) btn.disabled = len === 0;
+  }
+
+  function attachImage() {
+    const input = el('compose-image');
+    const preview = el('compose-preview');
+    const imgEl = el('compose-preview-img');
+    if (!input || !input.files || !input.files[0]) return;
+
+    const file = input.files[0];
+    if (!file.type.startsWith('image/')) {
+      showComposeAlert('Please choose an image file', 'error');
+      input.value = '';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showComposeAlert('Image must be smaller than 5 MB', 'error');
+      input.value = '';
+      return;
+    }
+
+    u.fileToBase64(file).then(function (b64) {
+      state.attachedImage = b64;
+      if (imgEl) imgEl.src = b64;
+      if (preview) preview.hidden = false;
+    }).catch(function (err) {
+      showComposeAlert('Failed to read image: ' + err.message, 'error');
     });
   }
 
-  /* ── Toggle like ──────────────────────────────────────── */
-  async function toggleLike(btn) {
-    const id      = btn.dataset.postId;
-    const countEl = btn.querySelector('.like-count');
-    const liked   = likedIds.has(id);
-    // Optimistic update
-    if (liked) { likedIds.delete(id); btn.classList.remove('liked'); btn.setAttribute('aria-pressed','false'); countEl.textContent = Math.max(0, +countEl.textContent - 1); }
-    else        { likedIds.add(id);    btn.classList.add('liked');    btn.setAttribute('aria-pressed','true');  countEl.textContent = +countEl.textContent + 1; }
-    btn.querySelector('svg').setAttribute('fill', likedIds.has(id) ? 'currentColor' : 'none');
+  function removeAttachedImage() {
+    state.attachedImage = null;
+    const input = el('compose-image');
+    const preview = el('compose-preview');
+    const imgEl = el('compose-preview-img');
+    if (input) input.value = '';
+    if (imgEl) imgEl.src = '';
+    if (preview) preview.hidden = true;
+  }
+
+  async function toggleLike(postId, card, btn) {
+    const countEl = card.querySelector('[data-like-count]');
+    let count = parseInt((countEl && countEl.textContent) || '0', 10) || 0;
+    const wasLiked = btn.getAttribute('aria-pressed') === 'true';
+
+    btn.setAttribute('aria-pressed', wasLiked ? 'false' : 'true');
+    if (countEl) countEl.textContent = wasLiked ? Math.max(0, count - 1) : count + 1;
+    const svg = btn.querySelector('svg');
+    if (svg) svg.setAttribute('fill', wasLiked ? 'none' : 'currentColor');
+
     try {
-      const res = await window.AppApi.post(`/feed/${id}/like`, {});
-      if (typeof res.likeCount === 'number') countEl.textContent = res.likeCount;
-    } catch { /* revert silently */ }
+      await api('/api/feed/' + encodeURIComponent(postId) + '/like', { method: 'POST' });
+    } catch (e) {
+      btn.setAttribute('aria-pressed', wasLiked ? 'true' : 'false');
+      if (countEl) countEl.textContent = String(count);
+      if (svg) svg.setAttribute('fill', wasLiked ? 'currentColor' : 'none');
+      u.showToast('Could not update like', 'error');
+    }
   }
 
-  /* ── Comments modal ───────────────────────────────────── */
-  let activePostId = null;
-  async function openComments(postId) {
-    activePostId = postId;
-    const modal  = document.getElementById('comments-modal');
-    const list   = document.getElementById('comments-list');
-    const textIn = document.getElementById('comment-text');
-    textIn.value = '';
-    list.innerHTML = skeletonComments(3);
-    modal.classList.add('open');
+  async function deletePost(postId, card) {
+    if (!confirm('Delete this post? This cannot be undone.')) return;
     try {
-      const res  = await window.AppApi.get(`/feed/${postId}/comments`);
-      const cmts = res.data || res.comments || res || [];
-      list.innerHTML = cmts.length
-        ? cmts.map(commentItem).join('')
-        : '<p style="color:var(--color-text-muted);font-size:var(--text-sm);text-align:center;padding:var(--space-6) 0;">No comments yet. Be the first!</p>';
-    } catch { list.innerHTML = '<p style="color:var(--color-error);font-size:var(--text-sm);">Could not load comments.</p>'; }
+      await api('/api/feed/' + encodeURIComponent(postId), { method: 'DELETE' });
+      if (card && card.parentNode) {
+        card.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(-6px)';
+        setTimeout(function () { card.parentNode.removeChild(card); }, 200);
+      }
+      u.showToast('Post deleted', 'success');
+    } catch (e) {
+      console.error('deletePost', e);
+      u.showToast('Failed to delete post', 'error');
+    }
   }
 
-  function closeComments() {
-    document.getElementById('comments-modal').classList.remove('open');
-    activePostId = null;
+  async function openComments(postId, card) {
+    state.currentPostId = postId;
+    const modal = el('comments-modal');
+    const list = el('comments-list');
+    const name = (card && card.querySelector('.post-card__name') || {}).textContent || 'post';
+    if (!modal || !list) return;
+
+    list.innerHTML = '<div class="skeleton skeleton--text" style="width:80%;"></div>' +
+                     '<div class="skeleton skeleton--text" style="width:60%;"></div>';
+    u.openModal('comments-modal');
+    const subtitle = el('comments-modal-subtitle');
+    if (subtitle) subtitle.textContent = 'Comments on ' + name + "'s post";
+
+    try {
+      const response = await api('/api/feed/' + encodeURIComponent(postId) + '/comments');
+      const items = (response && (response.items || response.comments || response.data || response)) || [];
+      renderComments(items);
+    } catch (e) {
+      console.error('openComments', e);
+      list.innerHTML = '<div class="alert alert--error"><div class="alert__content">' + u.escHtml(e.message || 'Failed to load comments') + '</div></div>';
+    }
+  }
+
+  function renderComments(items) {
+    const list = el('comments-list');
+    if (!list) return;
+    if (!items || !items.length) {
+      list.innerHTML = '<div class="text-muted" style="padding:var(--space-4); text-align:center;">No comments yet. Be the first!</div>';
+      return;
+    }
+    list.innerHTML = items.map(function (c) {
+      const name = (c.user && (c.user.name || c.user.username)) || c.author || 'Rider';
+      const initial = initialsOf(name);
+      const time = u.relativeTime(c.createdAt || c.timestamp);
+      const colorIdx = (c.user && c.user.avatarColor) ? c.user.avatarColor : ((c._id || c.id || '').toString().charCodeAt(0) % 6) + 1;
+      return [
+        '<div class="comment">',
+        '  <div class="avatar avatar--sm" data-color="' + colorIdx + '">' + u.escHtml(initial) + '</div>',
+        '  <div class="comment__body">',
+        '    <div class="comment__head"><span class="comment__name">' + u.escHtml(name) + '</span><span class="comment__time">' + time + '</span></div>',
+        '    <div class="comment__text">' + u.escHtml(c.content || c.text || '') + '</div>',
+        '  </div>',
+        '</div>'
+      ].join('\n');
+    }).join('');
   }
 
   async function submitComment() {
-    const textIn = document.getElementById('comment-text');
-    const text   = textIn.value.trim();
-    if (!text) return;
-    const btn = document.getElementById('comment-submit-btn');
-    btn.classList.add('loading'); btn.disabled = true;
+    const textEl = el('comment-text');
+    const btn = el('comment-submit-btn');
+    if (!textEl || !btn || !state.currentPostId) return;
+
+    const content = (textEl.value || '').trim();
+    if (!content) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-spinner"></span>';
+
     try {
-      await window.AppApi.post(`/feed/${activePostId}/comments`, { content: text });
-      textIn.value = '';
-      window.showToast('Comment added.', 'success');
-      // Refresh comments in modal
-      const res  = await window.AppApi.get(`/feed/${activePostId}/comments`);
-      const cmts = res.data || res.comments || res || [];
-      document.getElementById('comments-list').innerHTML = cmts.map(commentItem).join('');
-      // Update count in post card
-      const countEl = document.querySelector(`.comment-btn[data-post-id="${activePostId}"] span`);
-      if (countEl) countEl.textContent = cmts.length;
-    } catch (err) {
-      window.showToast(err.message || 'Could not post comment.', 'error');
-    } finally { btn.classList.remove('loading'); btn.disabled = false; }
+      const created = await api('/api/feed/' + encodeURIComponent(state.currentPostId) + '/comments', {
+        method: 'POST',
+        body: { content: content }
+      });
+      const list = el('comments-list');
+      if (list) {
+        const empty = list.querySelector('.text-muted');
+        if (empty) list.innerHTML = '';
+        if (created) {
+          const name = (created.user && (created.user.name || created.user.username)) || global.auth.getUserName();
+          const initial = initialsOf(name);
+          const time = u.relativeTime(created.createdAt || new Date().toISOString());
+          list.insertAdjacentHTML('beforeend',
+            '<div class="comment">' +
+            '  <div class="avatar avatar--sm" data-color="' + global.getAvatarColor() + '">' + u.escHtml(initial) + '</div>' +
+            '  <div class="comment__body">' +
+            '    <div class="comment__head"><span class="comment__name">' + u.escHtml(name) + '</span><span class="comment__time">' + time + '</span></div>' +
+            '    <div class="comment__text">' + u.escHtml(content) + '</div>' +
+            '  </div>' +
+            '</div>');
+          list.scrollTop = list.scrollHeight;
+        }
+      }
+      textEl.value = '';
+      const card = document.querySelector('[data-post-id="' + CSS.escape(state.currentPostId) + '"]');
+      if (card) {
+        const cmtCount = card.querySelector('[data-comments-count]');
+        if (cmtCount) {
+          const n = parseInt(cmtCount.textContent, 10) || 0;
+          cmtCount.textContent = String(n + 1);
+        }
+      }
+    } catch (e) {
+      u.showToast('Failed to post comment', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML =
+        '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>' +
+        ' Comment';
+    }
   }
 
-  /* ── Submit new post ──────────────────────────────────── */
-  async function submitPost() {
-    const text  = document.getElementById('compose-text').value.trim();
-    const imgIn = document.getElementById('compose-image');
-    const alert = document.getElementById('compose-alert');
-    const msg   = document.getElementById('compose-alert-msg');
-    const btn   = document.getElementById('post-submit-btn');
-    alert.style.display = 'none';
-
-    if (!text) { msg.textContent = 'Post cannot be empty.'; alert.style.display='flex'; return; }
-
-    btn.classList.add('loading'); btn.disabled = true;
-    try {
-      const body = { content: text };
-      // Image: in production, upload to Supabase Storage first and send URL
-      await window.AppApi.post('/feed', body);
-      document.getElementById('compose-text').value = '';
-      document.getElementById('compose-char').textContent = '0 / 1000';
-      clearImagePreview();
-      window.showToast('Post published!', 'success');
-      loadFeed(true);
-    } catch (err) {
-      msg.textContent  = err.message || 'Could not publish post.';
-      alert.style.display = 'flex';
-    } finally { btn.classList.remove('loading'); btn.disabled = false; }
+  function sharePost(postId) {
+    const url = global.location.origin + global.location.pathname + '#feed?post=' + encodeURIComponent(postId);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function () {
+        u.showToast('Link copied to clipboard', 'success', 2000);
+      }).catch(function () {
+        u.showToast('Share: ' + url, 'info', 4000);
+      });
+    } else {
+      u.showToast('Share: ' + url, 'info', 4000);
+    }
   }
 
-  /* ── Delete post ──────────────────────────────────────── */
-  async function deletePost(id) {
-    if (!confirm('Delete this post?')) return;
-    try {
-      await window.AppApi.delete(`/feed/${id}`);
-      window.showToast('Post deleted.', 'info');
-      loadFeed(true);
-    } catch (err) { window.showToast(err.message || 'Could not delete post.', 'error'); }
-  }
+  function bindCompose() {
+    const textEl = el('compose-text');
+    const btn = el('post-submit-btn');
+    const fileInput = el('compose-image');
+    const removeBtn = el('compose-remove-img');
+    const photoLabel = document.querySelector('[data-trigger="compose-image"]');
+    const loadMore = el('feed-load-more');
 
-  /* ── Image preview ────────────────────────────────────── */
-  function clearImagePreview() {
-    const prev = document.getElementById('compose-preview');
-    const img  = document.getElementById('compose-preview-img');
-    if (prev) prev.style.display = 'none';
-    if (img)  img.src = '';
-    const inp = document.getElementById('compose-image');
-    if (inp)  inp.value = '';
-  }
-
-  /* ── Helpers ──────────────────────────────────────────── */
-  function skeletonFeed(n) {
-    return Array.from({length:n}, () => `
-      <div class="card" style="margin-bottom:var(--space-4);">
-        <div style="display:flex;gap:var(--space-3);align-items:center;margin-bottom:var(--space-4);">
-          <div class="skeleton skeleton-avatar"></div>
-          <div style="flex:1;"><div class="skeleton skeleton-text" style="width:40%;"></div><div class="skeleton skeleton-text" style="width:25%;"></div></div>
-        </div>
-        <div class="skeleton skeleton-text"></div>
-        <div class="skeleton skeleton-text"></div>
-        <div class="skeleton skeleton-text"></div>
-        <div class="skeleton skeleton-image" style="margin-top:var(--space-3);"></div>
-      </div>`).join('');
-  }
-  function skeletonComments(n) {
-    return Array.from({length:n}, () => `
-      <div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-4);">
-        <div class="skeleton skeleton-avatar"></div>
-        <div style="flex:1;"><div class="skeleton skeleton-text" style="width:35%;"></div><div class="skeleton skeleton-text"></div></div>
-      </div>`).join('');
-  }
-  function relativeTime(iso) {
-    if (!iso) return '';
-    const diff = Date.now() - new Date(iso).getTime();
-    const m = Math.floor(diff/60000), h = Math.floor(diff/3600000), d = Math.floor(diff/86400000);
-    if (d > 30)  return new Date(iso).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
-    if (d >= 1)  return `${d}d ago`;
-    if (h >= 1)  return `${h}h ago`;
-    if (m >= 1)  return `${m}m ago`;
-    return 'just now';
-  }
-  function escHtml(s) { const d=document.createElement('div'); d.textContent=String(s||''); return d.innerHTML; }
-
-  /* ── Init ─────────────────────────────────────────────── */
-  function init() {
-    document.getElementById('page-content').innerHTML = renderShell();
-
-    // Compose avatar
-    const user = window.AppState?.user;
-    if (user) {
-      const av = document.getElementById('compose-avatar');
-      if (av) av.textContent = (user.name || user.email || 'R')[0].toUpperCase();
+    if (textEl && !textEl.dataset.bound) {
+      textEl.dataset.bound = '1';
+      const av = global.auth.getUserInitial();
+      const av2 = global.getAvatarColor();
+      const avEl = el('compose-avatar');
+      if (avEl) {
+        avEl.textContent = av;
+        avEl.setAttribute('data-color', String(av2));
+      }
+      textEl.addEventListener('input', updateCharCounter);
+      textEl.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          submitPost();
+        }
+      });
     }
 
-    // Char counter + enable/disable post button
-    const textArea = document.getElementById('compose-text');
-    const charEl   = document.getElementById('compose-char');
-    const submitBtn = document.getElementById('post-submit-btn');
-    textArea.addEventListener('input', () => {
-      const len = textArea.value.length;
-      charEl.textContent = `${len} / 1000`;
-      submitBtn.disabled = len === 0;
-    });
+    if (btn && !btn.dataset.bound) {
+      btn.dataset.bound = '1';
+      btn.addEventListener('click', submitPost);
+    }
 
-    // Image preview
-    document.getElementById('compose-image').addEventListener('change', e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = ev => {
-        document.getElementById('compose-preview-img').src = ev.target.result;
-        document.getElementById('compose-preview').style.display = 'block';
-      };
-      reader.readAsDataURL(file);
-    });
-    document.getElementById('compose-remove-img').addEventListener('click', clearImagePreview);
+    if (fileInput && !fileInput.dataset.bound) {
+      fileInput.dataset.bound = '1';
+      fileInput.addEventListener('change', attachImage);
+    }
 
-    // Post submit
-    submitBtn.addEventListener('click', submitPost);
-    textArea.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submitPost();
-    });
+    if (removeBtn && !removeBtn.dataset.bound) {
+      removeBtn.dataset.bound = '1';
+      removeBtn.addEventListener('click', removeAttachedImage);
+    }
 
-    // Load more
-    document.getElementById('load-more-btn').addEventListener('click', () => loadFeed());
+    if (loadMore && !loadMore.dataset.bound) {
+      loadMore.dataset.bound = '1';
+      loadMore.addEventListener('click', function () {
+        if (!state.loading && state.hasMore) {
+          state.page += 1;
+          loadFeed();
+        }
+      });
+    }
 
-    // Comments modal
-    document.getElementById('comments-modal-close').addEventListener('click', closeComments);
-    document.getElementById('comments-close-2').addEventListener('click', closeComments);
-    document.getElementById('comments-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeComments(); });
-    document.getElementById('comment-submit-btn').addEventListener('click', submitComment);
-
-    // Trending tag chips (filter by tag)
-    document.querySelectorAll('#trending-tags .filter-chip').forEach(chip => {
-      chip.addEventListener('click', () => window.showToast(`Filtered by ${chip.textContent}`, 'info'));
-    });
-
-    loadFeed(true);
+    const commentForm = el('comment-form');
+    if (commentForm && !commentForm.dataset.bound) {
+      commentForm.dataset.bound = '1';
+      commentForm.addEventListener('submit', function (e) { e.preventDefault(); submitComment(); });
+    }
+    const cmtBtn = el('comment-submit-btn');
+    if (cmtBtn && !cmtBtn.dataset.bound) {
+      cmtBtn.dataset.bound = '1';
+      cmtBtn.addEventListener('click', function (e) { e.preventDefault(); submitComment(); });
+    }
   }
 
-  return { init };
-})();
+  function bindGlobalDismiss() {
+    if (global.__feedDismissBound) return;
+    global.__feedDismissBound = true;
+    document.addEventListener('click', function (e) {
+      const openMenus = document.querySelectorAll('.menu.is-open');
+      openMenus.forEach(function (m) {
+        if (!m.contains(e.target)) m.classList.remove('is-open');
+      });
+    });
+  }
+
+  function init() {
+    const list = el('feed-list');
+    if (list) list.innerHTML = renderSkeletons(3);
+
+    const endMsg = el('feed-end');
+    if (endMsg) endMsg.hidden = true;
+
+    renderTrending();
+    renderActiveRiders();
+    bindCompose();
+    bindGlobalDismiss();
+    state.page = 1;
+    state.posts = [];
+    state.hasMore = true;
+    loadFeed();
+
+    return function destroy() {
+      state.currentPostId = null;
+    };
+  }
+
+  global.FeedModule = { init: init };
+})(window);

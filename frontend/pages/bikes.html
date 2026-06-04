@@ -1,309 +1,168 @@
-<!--
-  bikes.html — Page Fragment for Module 2.0: Bike Rent / Buy
-  Injected into #page-content by router.js
-  BikesModule.init() is called after injection
--->
-
-<!-- Page header -->
-<div class="page-header" style="margin-bottom:var(--space-5);">
-  <div class="page-header__text">
-    <h1 class="page-title">Bikes</h1>
-    <p class="page-subtitle">Browse, rent or buy bikes near you.</p>
-  </div>
-
-  <!-- Search bar -->
-  <div class="page-actions">
-    <div class="input-group" style="min-width:220px;">
-      <span class="input-icon" aria-hidden="true">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"/>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-      </span>
-      <input type="search"
-             id="bike-search"
-             class="form-control"
-             placeholder="Search bikes…"
-             aria-label="Search bikes"
-             style="padding-left:var(--space-10); border-radius:var(--radius-full);" />
-    </div>
-  </div>
-</div>
-
-<!-- Tab strip -->
-<div class="tabs" role="tablist" id="bikes-tabs" aria-label="Bikes navigation">
-  <button class="tab active"
-          role="tab" aria-selected="true"
-          data-tab="browse" id="tab-browse"
-          aria-controls="bikes-browse-panel">Browse</button>
-  <button class="tab"
-          role="tab" aria-selected="false"
-          data-tab="rentals" id="tab-rentals"
-          aria-controls="bikes-rentals-panel">My Rentals</button>
-</div>
-
-
-<!-- ══════════════════════════════════════
-     Browse Panel
-══════════════════════════════════════ -->
-<div id="bikes-browse-panel"
-     role="tabpanel"
-     aria-labelledby="tab-browse">
-
-  <!-- Filters + view toggle row -->
-  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--space-3); margin-bottom:var(--space-5);">
-
-    <!-- Type filter chips -->
-    <div class="filter-bar" id="bike-filter-bar"
-         role="group" aria-label="Filter bikes by type">
-      <button class="filter-chip active" data-filter="all"      type="button">All</button>
-      <button class="filter-chip"        data-filter="mountain" type="button">Mountain</button>
-      <button class="filter-chip"        data-filter="road"     type="button">Road</button>
-      <button class="filter-chip"        data-filter="electric" type="button">Electric</button>
-      <button class="filter-chip"        data-filter="hybrid"   type="button">Hybrid</button>
-      <button class="filter-chip"        data-filter="cruiser"  type="button">Cruiser</button>
-    </div>
-
-    <!-- Sort + view toggle -->
-    <div style="display:flex; align-items:center; gap:var(--space-2); flex-shrink:0;">
-      <label class="sr-only" for="bike-sort">Sort by</label>
-      <select id="bike-sort" class="form-control form-control-sm" aria-label="Sort bikes">
-        <option value="default">Sort: Default</option>
-        <option value="price_asc">Price: Low → High</option>
-        <option value="price_desc">Price: High → Low</option>
-        <option value="name_asc">Name A–Z</option>
-        <option value="available">Available first</option>
-      </select>
-
-      <!-- Grid / List toggle -->
-      <div role="group" aria-label="View mode" style="display:flex; gap:var(--space-1);">
-        <button id="view-grid-btn"
-                class="btn btn-icon btn-sm btn-primary"
-                type="button"
-                aria-pressed="true"
-                aria-label="Grid view" title="Grid view">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-            <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
-          </svg>
-        </button>
-        <button id="view-list-btn"
-                class="btn btn-icon btn-sm btn-ghost"
-                type="button"
-                aria-pressed="false"
-                aria-label="List view" title="List view">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <line x1="8" y1="6" x2="21" y2="6"/>
-            <line x1="8" y1="12" x2="21" y2="12"/>
-            <line x1="8" y1="18" x2="21" y2="18"/>
-            <line x1="3" y1="6" x2="3.01" y2="6"/>
-            <line x1="3" y1="12" x2="3.01" y2="12"/>
-            <line x1="3" y1="18" x2="3.01" y2="18"/>
-          </svg>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bikes — Bikers Portal</title>
+</head>
+<body>
+  <div id="page-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-header__title">Find your next bike</h1>
+        <p class="page-header__subtitle">Rent by the day or buy your forever ride</p>
+      </div>
+      <div class="page-header__actions">
+        <button type="button" class="btn btn--secondary btn--sm" onclick="window.location.hash='#recommendation'">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>
+          AI picks
         </button>
       </div>
     </div>
-  </div>
 
-  <!-- Results meta row -->
-  <div id="bikes-results-meta"
-       style="font-size:var(--text-xs); color:var(--color-text-muted); margin-bottom:var(--space-4);"
-       aria-live="polite" aria-atomic="true">
-    Loading bikes…
-  </div>
+    <div class="bikes-layout">
+      <!-- FILTERS -->
+      <aside class="bikes-layout__filters" id="bikes-filters" aria-label="Filters">
+        <div class="card">
+          <div class="card__header">
+            <h2 class="card__title">Search</h2>
+          </div>
+          <div class="form__group">
+            <label class="form__label" for="bike-search">Keyword</label>
+            <div style="position:relative;">
+              <input type="search" id="bike-search" class="form__input" placeholder="Trek, MTB, road..." style="padding-left: 40px;">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--color-text-muted);">
+                <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+              </svg>
+            </div>
+          </div>
+        </div>
 
-  <!-- Bike grid — BikesModule renders cards here -->
-  <div id="bikes-grid"
-       class="bike-grid"
-       aria-live="polite"
-       aria-label="Bike listings"
-       aria-relevant="additions removals">
+        <div class="card">
+          <div class="card__header">
+            <h2 class="card__title">Type</h2>
+          </div>
+          <div id="bikes-type-filters" class="chip-group">
+            <button type="button" class="chip" data-type-filter="All" aria-pressed="true">All</button>
+            <button type="button" class="chip" data-type-filter="Road" aria-pressed="false">Road</button>
+            <button type="button" class="chip" data-type-filter="MTB" aria-pressed="false">MTB</button>
+            <button type="button" class="chip" data-type-filter="Electric" aria-pressed="false">Electric</button>
+            <button type="button" class="chip" data-type-filter="Hybrid" aria-pressed="false">Hybrid</button>
+            <button type="button" class="chip" data-type-filter="Fixed Gear" aria-pressed="false">Fixed Gear</button>
+          </div>
+        </div>
 
-    <!-- Static skeleton placeholders -->
-    <div class="card" style="padding:0; overflow:hidden;" aria-hidden="true">
-      <div class="skeleton skeleton-image"></div>
-      <div style="padding:var(--space-5);">
-        <div class="skeleton skeleton-heading"></div>
-        <div class="skeleton skeleton-text"></div>
-        <div class="skeleton skeleton-text" style="width:60%;"></div>
+        <div class="card">
+          <div class="card__header">
+            <h2 class="card__title">Mode</h2>
+          </div>
+          <div id="bikes-mode-filters" class="chip-group">
+            <button type="button" class="chip" data-mode-filter="All" aria-pressed="true">All</button>
+            <button type="button" class="chip" data-mode-filter="Rent" aria-pressed="false">Rent</button>
+            <button type="button" class="chip" data-mode-filter="Buy" aria-pressed="false">Buy</button>
+            <button type="button" class="chip" data-mode-filter="Both" aria-pressed="false">Both</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <h2 class="card__title">Price (₹/day)</h2>
+          </div>
+          <div class="form__row">
+            <div class="form__group">
+              <label class="form__label" for="bike-min-price">Min</label>
+              <input type="number" min="0" id="bike-min-price" class="form__input" placeholder="0">
+            </div>
+            <div class="form__group">
+              <label class="form__label" for="bike-max-price">Max</label>
+              <input type="number" min="0" id="bike-max-price" class="form__input" placeholder="5000">
+            </div>
+          </div>
+          <div style="display:flex; gap:var(--space-2); margin-top:var(--space-3);">
+            <button type="button" id="bikes-apply-filters" class="btn btn--primary btn--sm btn--block">Apply Filters</button>
+            <button type="button" id="bikes-reset-filters" class="btn btn--ghost btn--sm">Reset</button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- MAIN GRID -->
+      <div class="bikes-layout__main">
+        <div class="bikes-toolbar">
+          <div class="bikes-toolbar__count" id="bikes-count">Loading bikes...</div>
+          <div class="bikes-toolbar__view" role="group" aria-label="View toggle">
+            <button type="button" data-bikes-view="grid" aria-pressed="true" aria-label="Grid view">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            </button>
+            <button type="button" data-bikes-view="list" aria-pressed="false" aria-label="List view">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div id="bikes-grid" class="bikes-grid" aria-live="polite" aria-busy="true"></div>
+
+        <div style="text-align:center;">
+          <button type="button" id="bikes-load-more" class="btn btn--secondary" hidden>Load more</button>
+          <p id="bikes-end" class="text-muted" style="font-size:var(--text-sm); margin-top:var(--space-3);" hidden>End of list — try a different filter.</p>
+        </div>
       </div>
     </div>
-    <div class="card" style="padding:0; overflow:hidden;" aria-hidden="true">
-      <div class="skeleton skeleton-image"></div>
-      <div style="padding:var(--space-5);">
-        <div class="skeleton skeleton-heading"></div>
-        <div class="skeleton skeleton-text"></div>
-        <div class="skeleton skeleton-text" style="width:50%;"></div>
-      </div>
-    </div>
-    <div class="card" style="padding:0; overflow:hidden;" aria-hidden="true">
-      <div class="skeleton skeleton-image"></div>
-      <div style="padding:var(--space-5);">
-        <div class="skeleton skeleton-heading"></div>
-        <div class="skeleton skeleton-text"></div>
-        <div class="skeleton skeleton-text" style="width:70%;"></div>
-      </div>
-    </div>
-    <div class="card" style="padding:0; overflow:hidden;" aria-hidden="true">
-      <div class="skeleton skeleton-image"></div>
-      <div style="padding:var(--space-5);">
-        <div class="skeleton skeleton-heading"></div>
-        <div class="skeleton skeleton-text"></div>
-        <div class="skeleton skeleton-text" style="width:55%;"></div>
-      </div>
-    </div>
-    <div class="card" style="padding:0; overflow:hidden;" aria-hidden="true">
-      <div class="skeleton skeleton-image"></div>
-      <div style="padding:var(--space-5);">
-        <div class="skeleton skeleton-heading"></div>
-        <div class="skeleton skeleton-text"></div>
-        <div class="skeleton skeleton-text" style="width:65%;"></div>
-      </div>
-    </div>
-    <div class="card" style="padding:0; overflow:hidden;" aria-hidden="true">
-      <div class="skeleton skeleton-image"></div>
-      <div style="padding:var(--space-5);">
-        <div class="skeleton skeleton-heading"></div>
-        <div class="skeleton skeleton-text"></div>
-        <div class="skeleton skeleton-text" style="width:45%;"></div>
+
+    <!-- RENT MODAL -->
+    <div class="modal-backdrop" id="rent-modal" role="dialog" aria-modal="true" aria-labelledby="rent-modal-title" aria-hidden="true">
+      <div class="modal">
+        <div class="modal__header">
+          <div style="display:flex; gap:var(--space-3); align-items:center;">
+            <img id="rent-bike-image" alt="" width="56" height="56" loading="lazy" style="width:56px; height:56px; object-fit:cover; border-radius:var(--radius-md); display:none;">
+            <div>
+              <h2 class="modal__title" id="rent-modal-title">Book a bike</h2>
+              <p class="text-muted" style="font-size:var(--text-xs); margin-top:2px;">
+                <span id="rent-bike-name">Bike</span>
+              </p>
+            </div>
+          </div>
+          <button type="button" class="icon-btn" data-modal-close aria-label="Close">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div class="modal__body">
+          <form id="rent-form" class="form" novalidate>
+            <div id="rent-alert" aria-live="polite"></div>
+
+            <div class="form__row">
+              <div class="form__group">
+                <label class="form__label form__label--required" for="rent-start">Start date</label>
+                <input type="date" id="rent-start" class="form__input" required>
+              </div>
+              <div class="form__group">
+                <label class="form__label form__label--required" for="rent-end">End date</label>
+                <input type="date" id="rent-end" class="form__input" required>
+              </div>
+            </div>
+
+            <div class="form__group">
+              <label class="form__checkbox">
+                <input type="checkbox" id="rent-insurance">
+                <span>Add damage protection (₹99 per booking)</span>
+              </label>
+              <span class="form__hint">Covers accidental damage and roadside support during your rental period.</span>
+            </div>
+
+            <div class="rent-summary" aria-live="polite">
+              <div class="rent-summary__row"><span>Daily rate</span><span id="rent-daily">—</span></div>
+              <div class="rent-summary__row"><span>Number of days</span><span><span id="rent-days">0</span> days</span></div>
+              <div class="rent-summary__row"><span>Insurance</span><span id="rent-insurance-cost">₹0</span></div>
+              <div class="rent-summary__row rent-summary__row--total"><span>Total</span><span class="rent-summary__value" id="rent-total">₹0</span></div>
+            </div>
+          </form>
+        </div>
+
+        <div class="modal__footer">
+          <button type="button" class="btn btn--secondary" data-modal-close>Cancel</button>
+          <button type="button" id="rent-confirm-btn" class="btn btn--primary">Confirm Booking</button>
+        </div>
       </div>
     </div>
   </div>
-  <!-- /bikes-grid -->
-
-  <!-- Pagination -->
-  <nav class="pagination"
-       id="bikes-pagination"
-       style="margin-top:var(--space-8); justify-content:center;"
-       aria-label="Bike listing pages">
-    <!-- Populated by BikesModule -->
-  </nav>
-
-</div>
-<!-- /bikes-browse-panel -->
-
-
-<!-- ══════════════════════════════════════
-     My Rentals Panel
-══════════════════════════════════════ -->
-<div id="bikes-rentals-panel"
-     role="tabpanel"
-     aria-labelledby="tab-rentals"
-     style="display:none;">
-
-  <!-- Quick stats strip -->
-  <div id="rental-stats-strip"
-       style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:var(--space-4); margin-bottom:var(--space-6);">
-    <div class="card kpi-card">
-      <div class="kpi-card__label">Total Rentals</div>
-      <div class="kpi-card__value" id="stat-total-rentals">—</div>
-    </div>
-    <div class="card kpi-card">
-      <div class="kpi-card__label">Active Now</div>
-      <div class="kpi-card__value" id="stat-active-rentals">—</div>
-    </div>
-    <div class="card kpi-card">
-      <div class="kpi-card__label">Total Spent</div>
-      <div class="kpi-card__value" id="stat-total-spent">—</div>
-    </div>
-  </div>
-
-  <!-- Rental list — BikesModule renders rows here -->
-  <div id="rentals-list" aria-live="polite" aria-label="My rental bookings">
-    <!-- skeleton -->
-    <div class="card" style="margin-bottom:var(--space-3); padding:var(--space-4) var(--space-5);" aria-hidden="true">
-      <div class="skeleton skeleton-heading" style="width:50%;"></div>
-      <div class="skeleton skeleton-text"    style="width:30%; margin-top:var(--space-2);"></div>
-    </div>
-    <div class="card" style="margin-bottom:var(--space-3); padding:var(--space-4) var(--space-5);" aria-hidden="true">
-      <div class="skeleton skeleton-heading" style="width:45%;"></div>
-      <div class="skeleton skeleton-text"    style="width:25%; margin-top:var(--space-2);"></div>
-    </div>
-    <div class="card" style="margin-bottom:var(--space-3); padding:var(--space-4) var(--space-5);" aria-hidden="true">
-      <div class="skeleton skeleton-heading" style="width:55%;"></div>
-      <div class="skeleton skeleton-text"    style="width:35%; margin-top:var(--space-2);"></div>
-    </div>
-  </div>
-</div>
-<!-- /bikes-rentals-panel -->
-
-
-<!-- ══════════════════════════════════════
-     Bike Detail Modal
-══════════════════════════════════════ -->
-<div class="modal-backdrop"
-     id="bike-modal"
-     role="dialog"
-     aria-modal="true"
-     aria-labelledby="bike-modal-title">
-  <div class="modal" style="max-width:640px;">
-
-    <div class="modal-header">
-      <h2 class="modal-title" id="bike-modal-title">Bike Details</h2>
-      <button class="modal-close btn btn-ghost btn-icon"
-              id="bike-modal-close"
-              aria-label="Close bike details" type="button">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <line x1="18" y1="6"  x2="6"  y2="18"/>
-          <line x1="6"  y1="6"  x2="18" y2="18"/>
-        </svg>
-      </button>
-    </div>
-
-    <!-- Populated by BikesModule.openBikeDetail() -->
-    <div class="modal-body" id="bike-modal-body"></div>
-
-    <div class="modal-footer" id="bike-modal-footer">
-      <button class="btn btn-ghost" id="bike-modal-close-2" type="button">Close</button>
-    </div>
-
-  </div>
-</div>
-<!-- /bike-modal -->
-
-
-<!-- ══════════════════════════════════════
-     Booking Modal
-══════════════════════════════════════ -->
-<div class="modal-backdrop"
-     id="booking-modal"
-     role="dialog"
-     aria-modal="true"
-     aria-labelledby="booking-modal-title">
-  <div class="modal" style="max-width:500px;">
-
-    <div class="modal-header">
-      <h2 class="modal-title" id="booking-modal-title">Book Bike</h2>
-      <button class="modal-close btn btn-ghost btn-icon"
-              id="booking-modal-close"
-              aria-label="Close booking form" type="button">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <line x1="18" y1="6"  x2="6"  y2="18"/>
-          <line x1="6"  y1="6"  x2="18" y2="18"/>
-        </svg>
-      </button>
-    </div>
-
-    <!-- Booking form injected by BikesModule.openBookingModal() -->
-    <div class="modal-body" id="booking-modal-body"></div>
-
-    <div class="modal-footer" id="booking-modal-footer">
-      <button class="btn btn-ghost" id="booking-modal-close-2" type="button">Cancel</button>
-      <button class="btn btn-primary" id="confirm-booking-btn" type="button">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-          <polyline points="22 4 12 14.01 9 11.01"/>
-        </svg>
-        Confirm Booking
-      </button>
-    </div>
-
-  </div>
-</div>
-<!-- /booking-modal -->
+</body>
+</html>

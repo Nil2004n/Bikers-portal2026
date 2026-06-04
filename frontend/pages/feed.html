@@ -1,654 +1,104 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="light">
+<!doctype html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Community feed — stories, tips and rides from the biker community." />
+  <meta charset="UTF-8">
   <title>Feed — Bikers Portal</title>
-
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Barlow+Condensed:wght@600;700&family=Inter:wght@300..700&display=swap" rel="stylesheet" />
-
-  <!-- Stylesheets — order matters -->
-  <link rel="stylesheet" href="../assets/css/base.css" />
-  <link rel="stylesheet" href="../assets/css/components.css" />
-  <link rel="stylesheet" href="../assets/css/layout.css" />
-
-  <style>
-    /* ============================================================
-       FEED PAGE — Responsive styles
-       Breakpoints mirror layout.css exactly:
-         1280px  → feed sidebar narrows to 280px
-         1024px  → sidebar hidden (feed-sidebar display:none)
-          768px  → single column, mobile nav visible
-          480px  → tightest spacing
-    ============================================================ */
-
-    /* ── Compose card ───────────────────────────────────── */
-    .compose-row {
-      display: flex;
-      gap: var(--space-3);
-      align-items: flex-start;
-    }
-
-    .compose-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-top: var(--space-3);
-      flex-wrap: wrap;
-      gap: var(--space-3);
-    }
-
-    .compose-footer__left  { display: flex; gap: var(--space-2); }
-    .compose-footer__right { display: flex; align-items: center; gap: var(--space-3); }
-
-    /* Photo-attach label acts as button */
-    .compose-attach-label {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-1);
-      cursor: pointer;
-    }
-
-    /* Image preview strip */
-    #compose-preview {
-      display: none;
-      margin-top: var(--space-3);
-      position: relative;
-    }
-
-    #compose-preview-img {
-      max-height: 200px;
-      border-radius: var(--radius-md);
-      object-fit: cover;
-      width: 100%;
-      background: var(--color-surface-offset);
-    }
-
-    #compose-remove-img {
-      position: absolute;
-      top: var(--space-2);
-      right: var(--space-2);
-    }
-
-    /* ── Post list ──────────────────────────────────────── */
-    /* Individual .post-card styles live in components.css.
-       JS injects them via postCard() into #feed-list.      */
-
-    /* ── Sidebar ────────────────────────────────────────── */
-    /* .feed-sidebar column is handled by .feed-layout in
-       layout.css — hidden at 1024px, single-col at 768px. */
-
-    .sidebar-riders-row {
-      display: flex;
-      align-items: center;
-      gap: var(--space-3);
-      padding: var(--space-3) 0;
-      border-bottom: 1px solid var(--color-divider);
-    }
-
-    .sidebar-riders-row:last-child {
-      border-bottom: none;
-    }
-
-    .sidebar-rider-meta {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .sidebar-rider-name {
-      font-size: var(--text-sm);
-      font-weight: 600;
-      color: var(--color-text);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .sidebar-rider-rides {
-      font-size: var(--text-xs);
-      color: var(--color-text-muted);
-    }
-
-    /* ── Compose textarea — don't resize horizontally ───── */
-    #compose-text {
-      resize: none;
-      flex: 1;
-    }
-
-    /* ── Load more / end strip ──────────────────────────── */
-    #feed-load-more {
-      text-align: center;
-      margin-top: var(--space-6);
-      display: none;
-    }
-
-    #feed-end {
-      text-align: center;
-      padding: var(--space-8) 0;
-      color: var(--color-text-faint);
-      font-size: var(--text-sm);
-      display: none;
-    }
-
-    /* ── Comments modal list ────────────────────────────── */
-    #comments-list {
-      max-height: 320px;
-      overflow-y: auto;
-      margin-bottom: var(--space-4);
-      scrollbar-width: thin;
-      scrollbar-color: var(--color-divider) transparent;
-    }
-
-    /* ── Trending tags ──────────────────────────────────── */
-    #trending-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-      margin-top: var(--space-2);
-    }
-
-    /* ============================================================
-       RESPONSIVE OVERRIDES
-    ============================================================ */
-
-    /* 1280px — sidebar narrows (layout.css already sets 280px) */
-    @media (max-width: 1280px) {
-      /* feed-layout is handled by layout.css — nothing extra needed */
-    }
-
-    /* 1024px — sidebar hidden, single column */
-    @media (max-width: 1024px) {
-      /* layout.css hides .feed-sidebar and collapses feed-layout
-         Nothing extra needed here                               */
-    }
-
-    /* 768px — tablet / mobile */
-    @media (max-width: 768px) {
-      /* Compose card: wrap avatar + textarea on small screen */
-      .compose-row {
-        flex-wrap: wrap;
-      }
-
-      .compose-row .avatar {
-        /* Hide avatar on very narrow compose bar to save space */
-        display: none;
-      }
-
-      .compose-footer {
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
-      }
-    }
-
-    /* 480px — mobile */
-    @media (max-width: 480px) {
-      /* Compose footer: stack attach left, char+btn right stays in row */
-      .compose-footer {
-        gap: var(--space-2);
-      }
-
-      /* Post action buttons: reduce gap so all 3 fit */
-      .post-card__actions {
-        gap: var(--space-3);
-        flex-wrap: nowrap;
-      }
-
-      /* Share btn label hidden on tiny screens — icon only */
-      .share-btn-label {
-        display: none;
-      }
-
-      /* Card padding: tighter */
-      .card {
-        padding: var(--space-4);
-      }
-
-      /* Comments modal: full-width on tiny screens */
-      #comments-modal .modal {
-        max-width: 100%;
-        margin: var(--space-3);
-      }
-
-      /* Comment textarea: smaller */
-      #comment-text {
-        rows: 2;
-      }
-    }
-  </style>
 </head>
-
 <body>
-<!-- Skip to content -->
-<a href="#feed-list" class="skip-link">Skip to content</a>
-
-<!--
-  ================================================================
-  #page-content
-  FeedModule.init() → document.getElementById('page-content').innerHTML = renderShell()
-  The static markup below mirrors renderShell() exactly — same IDs,
-  same classes — so the page works as skeleton before JS hydrates it.
-  ================================================================
--->
-<div id="page-content">
-
-  <!-- ════════════════════════════════════════════════════════
-       FEED LAYOUT (two-column: main + sidebar)
-       .feed-layout grid defined in layout.css:
-         default: 1fr 320px
-         1280px:  1fr 280px
-         1024px:  1fr (sidebar hidden)
-         768px:   1fr (single col)
-  ════════════════════════════════════════════════════════════ -->
-  <div class="feed-layout">
-
-    <!-- ── MAIN COLUMN ──────────────────────────────────── -->
-    <div>
-
-      <!-- Page header -->
-      <div class="page-header" style="margin-bottom:var(--space-5);">
-        <div class="page-header__text">
-          <h1 class="page-title">Community Feed</h1>
-          <p class="page-subtitle">Stories, tips and rides from the biker community.</p>
-        </div>
+  <div id="page-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-header__title">Community Feed</h1>
+        <p class="page-header__subtitle">Stories, tips and tales from the rider community</p>
       </div>
-
-      <!-- ════════════════════════════════════════════════
-           COMPOSE CARD
-           JS init() wires:
-             #compose-text   → input  → update #compose-char, enable #post-submit-btn
-             #compose-text   → keydown Ctrl/Cmd+Enter → submitPost()
-             #compose-image  → change → FileReader → #compose-preview-img src
-             #compose-remove-img → click → clearImagePreview()
-             #post-submit-btn    → click → submitPost()
-      ════════════════════════════════════════════════════ -->
-      <div class="card" id="compose-card" style="margin-bottom:var(--space-5);">
-
-        <div class="compose-row">
-          <!-- Avatar — JS replaces textContent with user initial -->
-          <div class="avatar avatar-md"
-               id="compose-avatar"
-               style="background:var(--color-primary-highlight);
-                      color:var(--color-primary);
-                      flex-shrink:0;"
-               aria-hidden="true">R</div>
-
-          <textarea id="compose-text"
-                    class="form-control"
-                    rows="2"
-                    placeholder="Share a ride, tip or photo…"
-                    maxlength="1000"
-                    aria-label="Write a post"
-                    autocomplete="off"
-                    spellcheck="true"></textarea>
-        </div>
-
-        <div class="compose-footer">
-          <!-- Left: attach controls -->
-          <div class="compose-footer__left">
-            <label class="btn btn-ghost btn-sm compose-attach-label"
-                   title="Attach image"
-                   aria-label="Attach image">
-              <svg xmlns="http://www.w3.org/2000/svg"
-                   width="16" height="16" viewBox="0 0 24 24"
-                   fill="none" stroke="currentColor" stroke-width="2"
-                   aria-hidden="true">
-                <rect x="3" y="3" width="18" height="18" rx="2"/>
-                <circle cx="8.5" cy="8.5" r="1.5"/>
-                <polyline points="21 15 16 10 5 21"/>
-              </svg>
-              Photo
-              <!--
-                #compose-image — change → FileReader.readAsDataURL
-                → #compose-preview-img.src = dataURL
-                → #compose-preview.style.display = 'block'
-              -->
-              <input type="file"
-                     id="compose-image"
-                     accept="image/*"
-                     style="display:none;"
-                     aria-label="Upload image" />
-            </label>
-          </div>
-
-          <!-- Right: char counter + post button -->
-          <div class="compose-footer__right">
-            <!--
-              #compose-char — updated by textarea input event
-            -->
-            <span id="compose-char"
-                  style="font-size:var(--text-xs);color:var(--color-text-faint);"
-                  aria-live="polite"
-                  aria-label="Characters used">0 / 1000</span>
-
-            <!--
-              #post-submit-btn — disabled until textarea has content
-              click → submitPost()
-            -->
-            <button class="btn btn-primary btn-sm"
-                    id="post-submit-btn"
-                    type="button"
-                    disabled
-                    aria-label="Publish post">Post</button>
-          </div>
-        </div>
-
-        <!-- Image preview (hidden until file chosen) -->
-        <div id="compose-preview">
-          <img id="compose-preview-img"
-               src=""
-               alt="Image preview"
-               loading="lazy"
-               width="560"
-               height="200"
-               style="max-height:200px;border-radius:var(--radius-md);
-                      object-fit:cover;width:100%;
-                      background:var(--color-surface-offset);" />
-          <!--
-            #compose-remove-img → click → clearImagePreview():
-              hides #compose-preview, clears img src, resets #compose-image value
-          -->
-          <button id="compose-remove-img"
-                  class="btn btn-ghost btn-icon btn-sm"
-                  type="button"
-                  aria-label="Remove image"
-                  style="position:absolute;top:var(--space-2);right:var(--space-2);">
-            <svg width="14" height="14" viewBox="0 0 24 24"
-                 fill="none" stroke="currentColor" stroke-width="2"
-                 aria-hidden="true">
-              <line x1="18" y1="6"  x2="6"  y2="18"/>
-              <line x1="6"  y1="6"  x2="18" y2="18"/>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Compose error alert -->
-        <!--
-          #compose-alert     → shown by submitPost() on validation/API failure
-          #compose-alert-msg → message text set by submitPost()
-        -->
-        <div id="compose-alert"
-             class="alert alert-error"
-             role="alert"
-             aria-live="assertive"
-             style="display:none;margin-top:var(--space-3);">
-          <svg width="18" height="18" viewBox="0 0 24 24"
-               fill="none" stroke="currentColor" stroke-width="2"
-               aria-hidden="true">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          <span id="compose-alert-msg"></span>
-        </div>
-
-      </div><!-- /#compose-card -->
-
-
-      <!-- ════════════════════════════════════════════════
-           POST LIST
-           JS: loadFeed() → #feed-list.innerHTML = posts.map(postCard).join('')
-           aria-live="polite" announces new posts to screen readers.
-           Skeleton is shown by skeletonFeed(3) while loading.
-      ════════════════════════════════════════════════════ -->
-      <div id="feed-list"
-           aria-live="polite"
-           aria-label="Community posts">
-
-        <!-- Skeleton — 3 cards shown until loadFeed() resolves -->
-        <div class="card" style="margin-bottom:var(--space-4);" aria-hidden="true">
-          <div style="display:flex;gap:var(--space-3);align-items:center;margin-bottom:var(--space-4);">
-            <div class="skeleton skeleton-avatar"></div>
-            <div style="flex:1;">
-              <div class="skeleton skeleton-text" style="width:38%;"></div>
-              <div class="skeleton skeleton-text" style="width:22%;margin-top:var(--space-1);"></div>
-            </div>
-          </div>
-          <div class="skeleton skeleton-text"></div>
-          <div class="skeleton skeleton-text"></div>
-          <div class="skeleton skeleton-text" style="width:70%;"></div>
-          <div class="skeleton skeleton-image" style="margin-top:var(--space-3);"></div>
-        </div>
-
-        <div class="card" style="margin-bottom:var(--space-4);" aria-hidden="true">
-          <div style="display:flex;gap:var(--space-3);align-items:center;margin-bottom:var(--space-4);">
-            <div class="skeleton skeleton-avatar"></div>
-            <div style="flex:1;">
-              <div class="skeleton skeleton-text" style="width:42%;"></div>
-              <div class="skeleton skeleton-text" style="width:25%;margin-top:var(--space-1);"></div>
-            </div>
-          </div>
-          <div class="skeleton skeleton-text"></div>
-          <div class="skeleton skeleton-text" style="width:85%;"></div>
-          <div class="skeleton skeleton-text" style="width:60%;"></div>
-        </div>
-
-        <div class="card" style="margin-bottom:var(--space-4);" aria-hidden="true">
-          <div style="display:flex;gap:var(--space-3);align-items:center;margin-bottom:var(--space-4);">
-            <div class="skeleton skeleton-avatar"></div>
-            <div style="flex:1;">
-              <div class="skeleton skeleton-text" style="width:30%;"></div>
-              <div class="skeleton skeleton-text" style="width:20%;margin-top:var(--space-1);"></div>
-            </div>
-          </div>
-          <div class="skeleton skeleton-text"></div>
-          <div class="skeleton skeleton-text"></div>
-          <div class="skeleton skeleton-image" style="margin-top:var(--space-3);"></div>
-        </div>
-
-      </div><!-- /#feed-list -->
-
-
-      <!-- ── Load more ─────────────────────────────────── -->
-      <!--
-        #feed-load-more → shown by loadFeed() when hasMore = true
-        #load-more-btn  → click → loadFeed() (next page)
-      -->
-      <div id="feed-load-more">
-        <button class="btn btn-outline"
-                id="load-more-btn"
-                type="button">Load More</button>
-      </div>
-
-      <!-- ── End of feed ───────────────────────────────── -->
-      <!--
-        #feed-end → shown by loadFeed() when hasMore = false and posts exist
-      -->
-      <div id="feed-end" role="status" aria-live="polite">
-        You've reached the end of the feed.
-      </div>
-
-    </div><!-- /main column -->
-
-
-    <!-- ── SIDEBAR ──────────────────────────────────────── -->
-    <!--
-      .feed-sidebar — hidden at ≤1024px by layout.css:
-        @media (max-width:1024px) { .feed-layout > .feed-sidebar { display:none; } }
-    -->
-    <aside class="feed-sidebar">
-
-      <!-- Trending tags -->
-      <!--
-        #trending-tags → JS init() binds .filter-chip click →
-          window.showToast('Filtered by ' + chip.textContent, 'info')
-        Chips use .filter-chip class from components.css line 731.
-      -->
-      <div class="card" style="margin-bottom:var(--space-5);">
-        <div class="card-header">
-          <h2 class="card-title" style="font-size:var(--text-base);">Trending Tags</h2>
-        </div>
-        <div id="trending-tags">
-          <span class="filter-chip" style="cursor:pointer;">#MTBLife</span>
-          <span class="filter-chip" style="cursor:pointer;">#RoadCycling</span>
-          <span class="filter-chip" style="cursor:pointer;">#EBike</span>
-          <span class="filter-chip" style="cursor:pointer;">#CyclingIndia</span>
-          <span class="filter-chip" style="cursor:pointer;">#FixedGear</span>
-          <span class="filter-chip" style="cursor:pointer;">#BikePacking</span>
-        </div>
-      </div>
-
-      <!-- Active riders -->
-      <!--
-        #active-riders — static list, no JS wiring needed.
-        Avatars use .avatar.avatar-sm with primary highlight bg.
-      -->
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title" style="font-size:var(--text-base);">Active Riders</h2>
-        </div>
-        <div id="active-riders">
-
-          <div class="sidebar-riders-row">
-            <div class="avatar avatar-sm"
-                 style="background:var(--color-primary-highlight);
-                        color:var(--color-primary);flex-shrink:0;"
-                 aria-hidden="true">P</div>
-            <div class="sidebar-rider-meta">
-              <div class="sidebar-rider-name">Priya S.</div>
-              <div class="sidebar-rider-rides">142 rides</div>
-            </div>
-            <button class="btn btn-outline btn-sm"
-                    type="button"
-                    aria-label="Follow Priya S.">Follow</button>
-          </div>
-
-          <div class="sidebar-riders-row">
-            <div class="avatar avatar-sm"
-                 style="background:var(--color-primary-highlight);
-                        color:var(--color-primary);flex-shrink:0;"
-                 aria-hidden="true">R</div>
-            <div class="sidebar-rider-meta">
-              <div class="sidebar-rider-name">Raj Kumar</div>
-              <div class="sidebar-rider-rides">98 rides</div>
-            </div>
-            <button class="btn btn-outline btn-sm"
-                    type="button"
-                    aria-label="Follow Raj Kumar">Follow</button>
-          </div>
-
-          <div class="sidebar-riders-row">
-            <div class="avatar avatar-sm"
-                 style="background:var(--color-primary-highlight);
-                        color:var(--color-primary);flex-shrink:0;"
-                 aria-hidden="true">A</div>
-            <div class="sidebar-rider-meta">
-              <div class="sidebar-rider-name">Anita D.</div>
-              <div class="sidebar-rider-rides">77 rides</div>
-            </div>
-            <button class="btn btn-outline btn-sm"
-                    type="button"
-                    aria-label="Follow Anita D.">Follow</button>
-          </div>
-
-        </div>
-      </div>
-
-    </aside><!-- /.feed-sidebar -->
-
-  </div><!-- /.feed-layout -->
-
-
-  <!-- ════════════════════════════════════════════════════════
-       COMMENTS MODAL
-       IDs matched to feed.js exactly:
-         #comments-modal        → .modal-backdrop, open via classList.add('open')
-         #comments-modal-title  → aria-labelledby target
-         #comments-modal-close  → click → closeComments()
-         #comments-list         → innerHTML set by openComments() / submitComment()
-         #comment-text          → textarea, value read by submitComment()
-         #comments-close-2      → click → closeComments()
-         #comment-submit-btn    → click → submitComment()
-       Backdrop click → closeComments() (wired in init())
-  ════════════════════════════════════════════════════════════ -->
-  <div class="modal-backdrop"
-       id="comments-modal"
-       role="dialog"
-       aria-modal="true"
-       aria-labelledby="comments-modal-title">
-    <div class="modal" style="max-width:520px;">
-
-      <div class="modal-header">
-        <h2 class="modal-title" id="comments-modal-title">Comments</h2>
-        <button class="modal-close btn btn-ghost btn-icon"
-                id="comments-modal-close"
-                type="button"
-                aria-label="Close comments">
-          <svg width="18" height="18" viewBox="0 0 24 24"
-               fill="none" stroke="currentColor" stroke-width="2"
-               aria-hidden="true">
-            <line x1="18" y1="6"  x2="6"  y2="18"/>
-            <line x1="6"  y1="6"  x2="18" y2="18"/>
-          </svg>
+      <div class="page-header__actions">
+        <button type="button" class="btn btn--secondary btn--sm" onclick="window.location.hash='#trip'">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21 3 6"/></svg>
+          Plan a trip
         </button>
       </div>
-
-      <div class="modal-body">
-        <!-- #comments-list: injected by openComments() / submitComment() -->
-        <div id="comments-list"
-             aria-live="polite"
-             aria-label="Comments list">
-          <!-- Skeleton shown by skeletonComments(3) while loading -->
-        </div>
-
-        <div class="form-group">
-          <label for="comment-text" class="sr-only">Write a comment</label>
-          <textarea id="comment-text"
-                    class="form-control"
-                    rows="2"
-                    placeholder="Write a comment…"
-                    maxlength="500"
-                    aria-label="Write a comment"></textarea>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn btn-ghost"
-                id="comments-close-2"
-                type="button">Cancel</button>
-        <button class="btn btn-primary"
-                id="comment-submit-btn"
-                type="button">
-          <svg width="16" height="16" viewBox="0 0 24 24"
-               fill="none" stroke="currentColor" stroke-width="2"
-               aria-hidden="true">
-            <line x1="22" y1="2" x2="11" y2="13"/>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-          </svg>
-          Comment
-        </button>
-      </div>
-
     </div>
-  </div><!-- /#comments-modal -->
 
-</div><!-- /#page-content -->
+    <div class="feed-layout">
+      <!-- MAIN COLUMN -->
+      <div class="feed-layout__main">
+        <!-- COMPOSE -->
+        <section class="card" aria-labelledby="compose-title">
+          <h2 id="compose-title" class="visually-hidden">Create a post</h2>
+          <div class="compose">
+            <div class="avatar compose__avatar" id="compose-avatar" data-color="1">R</div>
+            <div class="compose__body">
+              <textarea id="compose-text" class="compose__textarea" maxlength="1000" placeholder="Share your latest ride, photo or tip... Use #hashtags to reach more riders." aria-label="Post content"></textarea>
 
+              <div id="compose-preview" class="compose__preview" hidden>
+                <img id="compose-preview-img" alt="Attached image preview" width="400" height="240" loading="lazy">
+                <button type="button" id="compose-remove-img" class="compose__preview-remove" aria-label="Remove attached image">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
 
-<!-- ════════════════════════════════════════════════════════
-     SCRIPTS
-     Load order: api → auth → state → utils → feed
-     FeedModule.init() called by router.js when hash = #feed,
-     or directly below when used as standalone page.
-════════════════════════════════════════════════════════════ -->
-<script src="../assets/js/api.js"           defer></script>
-<script src="../assets/js/auth.js"          defer></script>
-<script src="../assets/js/state.js"         defer></script>
-<script src="../assets/js/utils.js"         defer></script>
-<script src="../assets/js/modules/feed.js"  defer></script>
+              <div id="compose-alert" aria-live="polite"></div>
 
-<script defer>
-  document.addEventListener('DOMContentLoaded', () => {
-    if (window.__routerActive) return;
-    if (window.FeedModule && typeof FeedModule.init === 'function') {
-      FeedModule.init();
-    }
-  });
-</script>
+              <div class="compose__actions">
+                <div class="compose__tools">
+                  <label class="icon-btn" data-trigger="compose-image" aria-label="Attach photo" title="Attach photo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  </label>
+                  <input id="compose-image" type="file" accept="image/*" hidden>
 
+                  <span class="text-muted" style="font-size:var(--text-xs); margin-left:var(--space-2);">Cmd/Ctrl + Enter to post</span>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:var(--space-3);">
+                  <span id="compose-char" class="compose__counter">0 / 1000</span>
+                  <button type="button" id="post-submit-btn" class="btn btn--primary" disabled>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    Post
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- FEED LIST -->
+        <section aria-label="Posts">
+          <div id="feed-list" aria-live="polite" aria-busy="true"></div>
+
+          <div style="text-align:center; margin-top:var(--space-5);">
+            <button type="button" id="feed-load-more" class="btn btn--secondary" hidden>Load more posts</button>
+            <p id="feed-end" class="text-muted" style="font-size:var(--text-sm); margin-top:var(--space-3);" hidden>You're all caught up. Come back later for more.</p>
+          </div>
+        </section>
+      </div>
+
+      <!-- SIDE COLUMN -->
+      <aside class="feed-layout__side" aria-label="Discover">
+        <section class="card widget">
+          <div class="widget__head">
+            <h2 class="widget__title">Trending Tags</h2>
+            <span class="badge badge--primary">Live</span>
+          </div>
+          <div id="trending-tags" class="trending-tags"></div>
+        </section>
+
+        <section class="card widget">
+          <div class="widget__head">
+            <h2 class="widget__title">Active Riders</h2>
+          </div>
+          <div id="active-riders"></div>
+        </section>
+
+        <section class="card widget">
+          <div class="widget__head">
+            <h2 class="widget__title">Tip of the day</h2>
+          </div>
+          <p class="text-muted" style="font-size:var(--text-sm); line-height:1.5;">
+            Check your tire pressure before every ride. Road: 80–130 psi · MTB: 30–50 psi · Hybrid: 50–70 psi. Properly inflated tires roll faster and prevent flats.
+          </p>
+        </section>
+      </aside>
+    </div>
+  </div>
 </body>
 </html>

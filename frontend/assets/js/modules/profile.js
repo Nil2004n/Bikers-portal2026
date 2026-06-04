@@ -1,175 +1,400 @@
 /* ============================================================
-   profile.js — Module 5.0: Profile
-   Routes: #profile
-   API:
-     GET  /api/users/me              fetch own profile
-     PUT  /api/users/me              update profile
-     GET  /api/users/me/payments     payment history
-     GET  /api/trips/me/stats        ride stats
-     POST /api/users/me/avatar       upload avatar (multipart)
+   modules/profile.js — ProfileModule
+   Bikers Portal • frontend
    ============================================================ */
+(function (global) {
+  'use strict';
 
-window.ProfileModule = (() => {
+  const u = global.utils;
+  const api = global.apiFetch;
 
-  /* ── State ────────────────────────────────────────────── */
-  let profile      = null;
-  let payments     = [];
-  let rideStats    = {};
-  let activeTab    = 'info';
-  let avatarDataUrl = null;
+  const TABS = ['overview', 'edit', 'rentals', 'posts'];
+  const COLORS = [1, 2, 3, 4, 5, 6];
 
-  /* ── Shell ────────────────────────────────────────────── */
-  function renderShell() {
-    return `
-    <div class="page-section" style="max-width:860px;">
-      <!-- Hero -->
-      <div class="card" id="profile-hero" style="margin-bottom:var(--space-5);">
-        <div class="skeleton skeleton-heading" style="width:60%;"></div>
-        <div class="skeleton skeleton-text"    style="width:40%;margin-top:var(--space-2);"></div>
-      </div>
+  const state = {
+    user: null,
+    rentals: [],
+    posts: [],
+    activeTab: 'overview',
+    avatarColor: 1
+  };
 
-      <!-- Tabs -->
-      <div class="tabs" role="tablist" id="profile-tabs">
-        <button class="tab active" role="tab" aria-selected="true"  data-tab="info"     id="tab-info">Personal Info</button>
-        <button class="tab"        role="tab" aria-selected="false" data-tab="stats"    id="tab-stats">Ride Stats</button>
-        <button class="tab"        role="tab" aria-selected="false" data-tab="payments" id="tab-payments">Payments</button>
-        <button class="tab"        role="tab" aria-selected="false" data-tab="security" id="tab-security">Security</button>
-      </div>
+  function el(id) { return document.getElementById(id); }
 
-      <!-- Tab panels -->
-      <div id="tab-panel-info"     role="tabpanel" aria-labelledby="tab-info"    ></div>
-      <div id="tab-panel-stats"    role="tabpanel" aria-labelledby="tab-stats"    style="display:none;"></div>
-      <div id="tab-panel-payments" role="tabpanel" aria-labelledby="tab-payments" style="display:none;"></div>
-      <div id="tab-panel-security" role="tabpanel" aria-labelledby="tab-security" style="display:none;"></div>
-    </div>
+  function getInitial(name) { return u.initialsFromName(name); }
 
-    <!-- Avatar crop modal -->
-    <div class="modal-backdrop" id="avatar-modal" role="dialog" aria-modal="true" aria-labelledby="avatar-modal-title">
-      <div class="modal" style="max-width:420px;">
-        <div class="modal-header">
-          <h2 class="modal-title" id="avatar-modal-title">Update Photo</h2>
-          <button class="modal-close btn btn-ghost btn-icon" id="avatar-modal-close" aria-label="Close">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-        <div class="modal-body" style="text-align:center;">
-          <img id="avatar-preview" src="" alt="Preview" style="width:120px;height:120px;border-radius:9999px;object-fit:cover;border:3px solid var(--color-primary);margin:0 auto var(--space-4);" />
-          <p style="font-size:var(--text-sm);color:var(--color-text-muted);">This photo will be visible to other riders.</p>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-ghost" id="avatar-cancel">Cancel</button>
-          <button class="btn btn-primary" id="avatar-confirm">Save Photo</button>
-        </div>
-      </div>
-    </div>`;
+  function renderHero(user) {
+    const hero = el('profile-hero');
+    if (!hero || !user) return;
+    const name = user.name || user.username || 'Rider';
+    const username = user.username ? '@' + user.username : '';
+    const location = user.location || '';
+    const joined = u.formatDate(user.createdAt || user.joinedAt, { month: 'long', year: 'numeric' });
+    const color = user.avatarColor || 1;
+    const stats = user.stats || {};
+
+    hero.innerHTML = [
+      '<div class="profile-hero__inner">',
+      '  <div class="profile-hero__avatar" data-color="' + color + '">' + u.escHtml(getInitial(name)) + '</div>',
+      '  <div class="profile-hero__info">',
+      '    <div class="profile-hero__name">' + u.escHtml(name) + '</div>',
+      '    <div class="profile-hero__username">' + u.escHtml(username) + '</div>',
+      '    <div class="profile-hero__meta">',
+            location ? '<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> ' + u.escHtml(location) + '</span>' : '',
+            joined ? '<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Joined ' + u.escHtml(joined) + '</span>' : '',
+      '    </div>',
+      '  </div>',
+      '</div>',
+      '<div class="profile-hero__stats">',
+      '  <div class="profile-hero__stat"><div class="profile-hero__stat-value">' + (stats.totalRides != null ? stats.totalRides : (user.totalRides || 0)) + '</div><div class="profile-hero__stat-label">Total Rides</div></div>',
+      '  <div class="profile-hero__stat"><div class="profile-hero__stat-value">' + (stats.totalDistance != null ? stats.totalDistance : (user.totalDistance || 0)) + '</div><div class="profile-hero__stat-label">Distance (km)</div></div>',
+      '  <div class="profile-hero__stat"><div class="profile-hero__stat-value">' + (stats.bikesRented != null ? stats.bikesRented : (user.bikesRented || 0)) + '</div><div class="profile-hero__stat-label">Bikes Rented</div></div>',
+      '  <div class="profile-hero__stat"><div class="profile-hero__stat-value">' + (stats.postsCount != null ? stats.postsCount : (user.postsCount || 0)) + '</div><div class="profile-hero__stat-label">Posts</div></div>',
+      '</div>'
+    ].join('\n');
   }
 
-  /* ── Profile hero ─────────────────────────────────────── */
-  function renderHero(p) {
-    const initial = (p.name || p.email || 'R')[0].toUpperCase();
-    const joined  = p.createdAt
-      ? new Date(p.createdAt).toLocaleDateString('en-IN',{month:'long',year:'numeric'})
-      : '—';
-    return `
-    <div style="display:flex;align-items:flex-start;gap:var(--space-6);flex-wrap:wrap;">
-      <div style="position:relative;flex-shrink:0;">
-        <div class="avatar avatar-xl" id="hero-avatar"
-             style="background:var(--color-primary-highlight);color:var(--color-primary);
-                    width:88px;height:88px;font-size:var(--text-xl);">
-          ${p.avatarUrl
-            ? `<img src="${escHtml(p.avatarUrl)}" alt="${escHtml(p.name||'Avatar')}" style="width:100%;height:100%;object-fit:cover;" />`
-            : initial}
-        </div>
-        <label for="avatar-file-input" class="btn btn-icon btn-sm"
-               style="position:absolute;bottom:-4px;right:-4px;background:var(--color-primary);color:#fff;border:2px solid var(--color-surface);cursor:pointer;"
-               aria-label="Change avatar" title="Change photo">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" />
-        </label>
-      </div>
-      <div style="flex:1;min-width:180px;">
-        <h2 style="font-family:var(--font-display);font-size:var(--text-xl);font-weight:700;">${escHtml(p.name || 'Rider')}</h2>
-        <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-top:4px;">${escHtml(p.email || '')}</p>
-        <div style="display:flex;flex-wrap:wrap;gap:var(--space-3);margin-top:var(--space-4);">
-          <span class="badge badge-neutral">Joined ${joined}</span>
-          ${p.city ? `<span class="badge badge-neutral"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin-right:3px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escHtml(p.city)}</span>` : ''}
-          ${p.ridingStyle ? `<span class="badge badge-primary">${escHtml(p.ridingStyle)}</span>` : ''}
-        </div>
-      </div>
-    </div>`;
+  function renderOverview(user) {
+    const panel = el('tab-overview');
+    if (!panel) return;
+    const bio = user.bio || 'Cyclist, ride tinkerer and weekend explorer. Always looking for the next climb.';
+    const bikeTypes = (user.preferredBikeTypes && user.preferredBikeTypes.length)
+      ? user.preferredBikeTypes
+      : ['Road', 'Touring'];
+
+    const recent = (user.recentActivity || []).slice(0, 5);
+
+    let activityHtml = '';
+    if (recent.length) {
+      activityHtml = recent.map(function (item) {
+        return '<div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-2) 0;border-bottom:1px solid var(--color-divider);">' +
+          '<div class="avatar avatar--sm" data-color="' + ((item.color || 1)) + '">' + u.escHtml((item.title || '?').charAt(0).toUpperCase()) + '</div>' +
+          '<div style="flex:1; min-width:0;">' +
+            '<div style="font-size:var(--text-sm); font-weight:600;">' + u.escHtml(item.title || 'Activity') + '</div>' +
+            '<div style="font-size:var(--text-xs); color:var(--color-text-muted);">' + u.escHtml(item.subtitle || '') + '</div>' +
+          '</div>' +
+          '<span class="text-muted" style="font-size:var(--text-xs);">' + u.escHtml(u.relativeTime(item.time || new Date().toISOString())) + '</span>' +
+        '</div>';
+      }).join('');
+    } else {
+      activityHtml = '<p class="text-muted" style="font-size:var(--text-sm);">No recent activity yet.</p>';
+    }
+
+    panel.innerHTML = [
+      '<div class="profile-bio">' + u.escHtml(bio) + '</div>',
+      '<h4 style="font-family:var(--font-display); font-size:var(--text-md); margin-bottom:var(--space-2); text-transform:uppercase; letter-spacing:0.04em;">Preferred Bikes</h4>',
+      '<div class="profile-preferences">' +
+        bikeTypes.map(function (t) { return '<span class="tag">' + u.escHtml(t) + '</span>'; }).join('') +
+      '</div>',
+      '<h4 style="font-family:var(--font-display); font-size:var(--text-md); margin: var(--space-5) 0 var(--space-2); text-transform:uppercase; letter-spacing:0.04em;">Recent Activity</h4>',
+      activityHtml
+    ].join('\n');
   }
 
-  /* ── Info tab ─────────────────────────────────────────── */
-  function renderInfoPanel(p) {
-    return `
-    <div class="card" style="margin-top:var(--space-5);">
-      <div class="card-header">
-        <h3 class="card-title">Personal Information</h3>
-        <button class="btn btn-outline btn-sm" id="edit-toggle-btn">Edit</button>
-      </div>
-      <form id="profile-form" novalidate>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4) var(--space-5);">
-          <div class="form-group">
-            <label class="form-label" for="pf-name">Full Name</label>
-            <input type="text" id="pf-name" class="form-control" value="${escHtml(p.name||'')}" disabled required />
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="pf-email">Email</label>
-            <input type="email" id="pf-email" class="form-control" value="${escHtml(p.email||'')}" disabled required />
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="pf-phone">Phone</label>
-            <input type="tel" id="pf-phone" class="form-control" value="${escHtml(p.phone||'')}" placeholder="+91 XXXXXXXX" disabled />
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="pf-city">City</label>
-            <input type="text" id="pf-city" class="form-control" value="${escHtml(p.city||'')}" placeholder="Kolkata" disabled />
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="pf-style">Riding Style</label>
-            <select id="pf-style" class="form-control" disabled>
-              ${['','Mountain','Road','BMX','Touring','Commuter','Gravel'].map(s =>
-                `<option value="${s}" ${p.ridingStyle===s?'selected':''}>${s||'Select…'}</option>`).join('')}
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="pf-exp">Experience</label>
-            <select id="pf-exp" class="form-control" disabled>
-              ${['','Beginner','Intermediate','Advanced','Pro'].map(s =>
-                `<option value="${s}" ${p.experience===s?'selected':''}>${s||'Select…'}</option>`).join('')}
-            </select>
-          </div>
-          <div class="form-group" style="grid-column:1/-1;">
-            <label class="form-label" for="pf-bio">Bio</label>
-            <textarea id="pf-bio" class="form-control" rows="3" placeholder="Tell the community about yourself…" disabled>${escHtml(p.bio||'')}</textarea>
-          </div>
-        </div>
-        <div id="profile-form-actions" style="display:none;margin-top:var(--space-5);display:flex;justify-content:flex-end;gap:var(--space-3);">
-          <button type="button" class="btn btn-ghost"   id="cancel-edit-btn">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="save-profile-btn">Save Changes</button>
-        </div>
-      </form>
-    </div>`;
+  function renderEditForm(user) {
+    const form = el('edit-profile-form');
+    if (!form) return;
+    form.querySelector('[name="name"]').value = user.name || '';
+    form.querySelector('[name="username"]').value = user.username || '';
+    form.querySelector('[name="email"]').value = user.email || '';
+    form.querySelector('[name="location"]').value = user.location || '';
+    form.querySelector('[name="bio"]').value = user.bio || '';
+    form.querySelector('[name="preferredTypes"]').value = (user.preferredBikeTypes || []).join(', ');
+
+    const picker = el('avatar-color-picker');
+    if (picker) {
+      const current = user.avatarColor || 1;
+      picker.innerHTML = COLORS.map(function (c) {
+        return '<button type="button" class="color-swatch" data-color="' + c + '" aria-pressed="' + (c === current ? 'true' : 'false') + '" aria-label="Avatar color ' + c + '"></button>';
+      }).join('');
+      picker.querySelectorAll('[data-color]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const c = Number(btn.getAttribute('data-color'));
+          picker.querySelectorAll('[data-color]').forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
+          btn.setAttribute('aria-pressed', 'true');
+          state.avatarColor = c;
+          const av = document.querySelector('.profile-hero__avatar');
+          if (av) av.setAttribute('data-color', String(c));
+        });
+      });
+    }
   }
 
-  /* ── Stats tab ────────────────────────────────────────── */
-  function renderStatsPanel(s) {
-    const stats = [
-      { label:'Total Trips',     value: s.totalTrips || 0,    unit: '',   icon: '🗺️' },
-      { label:'Total Distance',  value: fmtNum(s.totalKm||0), unit:'km',  icon: '📏' },
-      { label:'Total Duration',  value: fmtNum(s.totalHours||0), unit:'h', icon: '⏱️' },
-      { label:'Avg Speed',       value: s.avgSpeed || 0,      unit:'km/h',icon: '⚡' },
-      { label:'Bikes Rented',    value: s.bikesRented || 0,   unit: '',   icon: '🚲' },
-      { label:'Favourite Route', value: escHtml(s.favouriteRoute||'—'), unit:'', icon:'❤️' },
-    ];
-    return `
-    <div class="kpi-grid" style="margin-top:var(--space-5);">
-      ${stats.map(st => `
-      <div class="card kpi-card">
-        <div class="kpi-card__label">${st.icon} ${st.label}</div>
-        <div class="kpi-card__value">${st.value}${st.unit ? `<span style="font-size:var(--text-sm);font-weight:400;color:var(--color-text-muted);margin-left:4px;">${st.unit}</span>` : ''}</div>
-      </div>`).join('')}
-    </div>
-    ${!s.totalTrips ? `
-    <div class="empty-state" style="margin-top:var(--space-8);">
-      <div class="empty-state__icon"><svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  function renderRentals() {
+    const panel = el('rental-history');
+    if (!panel) return;
+    if (!state.rentals.length) {
+      panel.innerHTML = u.emptyState({
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6l-3 7 4 4M5.5 17.5L9 9h3.5"/></svg>',
+        title: 'No rentals yet',
+        message: 'Once you book a bike, you\'ll see the full history here.',
+        actionLabel: 'Browse bikes'
+      });
+      const btn = panel.querySelector('[data-empty-action]');
+      if (btn) btn.addEventListener('click', function () { global.location.hash = '#bikes'; });
+      return;
+    }
+    let rows = '';
+    state.rentals.forEach(function (r) {
+      const bike = (r.bike && (r.bike.name || r.bike.title)) || r.bikeName || 'Bike';
+      const start = u.formatDate(r.startDate);
+      const end = u.formatDate(r.endDate);
+      const dur = r.duration || (r.startDate && r.endDate
+        ? Math.max(1, Math.round((new Date(r.endDate) - new Date(r.startDate)) / 86400000)) + ' days'
+        : '—');
+      const cost = u.formatPrice(r.cost != null ? r.cost : r.totalCost);
+      const status = r.status || 'Confirmed';
+      const badgeCls = status.toLowerCase() === 'cancelled' ? 'badge--error'
+        : status.toLowerCase() === 'completed' ? 'badge--success'
+        : status.toLowerCase() === 'active' ? 'badge--primary'
+        : 'badge--warning';
+      rows += '<tr>' +
+        '<td><strong>' + u.escHtml(bike) + '</strong></td>' +
+        '<td>' + u.escHtml(start) + '</td>' +
+        '<td>' + u.escHtml(end) + '</td>' +
+        '<td>' + u.escHtml(dur) + '</td>' +
+        '<td>' + u.escHtml(cost) + '</td>' +
+        '<td><span class="badge ' + badgeCls + '">' + u.escHtml(status) + '</span></td>' +
+      '</tr>';
+    });
+
+    panel.innerHTML = [
+      '<div class="table--responsive">',
+      '<table class="table">',
+      '<thead><tr><th>Bike</th><th>Start date</th><th>End date</th><th>Duration</th><th>Cost</th><th>Status</th></tr></thead>',
+      '<tbody>' + rows + '</tbody>',
+      '</table>',
+      '</div>'
+    ].join('\n');
+  }
+
+  function renderMyPosts() {
+    const panel = el('my-posts');
+    if (!panel) return;
+    if (!state.posts.length) {
+      panel.innerHTML = u.emptyState({
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>',
+        title: 'You haven\'t posted yet',
+        message: 'Share your rides, photos and stories with the community.',
+        actionLabel: 'Create a post'
+      });
+      const btn = panel.querySelector('[data-empty-action]');
+      if (btn) btn.addEventListener('click', function () { global.location.hash = '#feed'; });
+      return;
+    }
+    panel.innerHTML = state.posts.map(function (post) {
+      const name = (post.user && (post.user.name || post.user.username)) || 'You';
+      const initial = getInitial(name);
+      const content = u.escHtml(post.content || '');
+      const time = u.relativeTime(post.createdAt || post.timestamp);
+      const colorIdx = state.avatarColor || 1;
+      const image = post.image || post.imageBase64 || post.imageUrl;
+      const id = post.id || post._id;
+
+      let imageHtml = '';
+      if (image) {
+        imageHtml = '<img class="post-card__image" src="' + u.escHtml(image) + '" alt="Post image" loading="lazy" width="800" height="480">';
+      }
+
+      return [
+        '<article class="card post-card" data-my-post="' + u.escHtml(id) + '">',
+        '  <header class="post-card__head">',
+        '    <div class="avatar" data-color="' + colorIdx + '">' + u.escHtml(initial) + '</div>',
+        '    <div class="post-card__user">',
+        '      <div class="post-card__name">' + u.escHtml(name) + '</div>',
+        '      <div class="post-card__meta"><span>' + time + '</span></div>',
+        '    </div>',
+        '    <button type="button" class="icon-btn" data-delete-my-post="' + u.escHtml(id) + '" aria-label="Delete post">',
+        '      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>',
+        '    </button>',
+        '  </header>',
+        '  <div class="post-card__content">' + content + '</div>',
+          imageHtml,
+        '</article>'
+      ].join('\n');
+    }).join('');
+
+    panel.querySelectorAll('[data-delete-my-post]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const id = btn.getAttribute('data-delete-my-post');
+        if (!confirm('Delete this post?')) return;
+        api('/api/feed/' + encodeURIComponent(id), { method: 'DELETE' })
+          .then(function () {
+            state.posts = state.posts.filter(function (p) { return (p.id || p._id) !== id; });
+            renderMyPosts();
+            u.showToast('Post deleted', 'success');
+          })
+          .catch(function () { u.showToast('Failed to delete post', 'error'); });
+      });
+    });
+  }
+
+  function switchTab(tab) {
+    if (TABS.indexOf(tab) === -1) return;
+    state.activeTab = tab;
+    document.querySelectorAll('[data-profile-tab]').forEach(function (b) {
+      b.setAttribute('aria-selected', b.getAttribute('data-profile-tab') === tab ? 'true' : 'false');
+    });
+    TABS.forEach(function (t) {
+      const panel = el('tab-' + t);
+      if (panel) panel.hidden = t !== tab;
+    });
+  }
+
+  function bindTabs() {
+    const tabs = el('profile-tabs');
+    if (!tabs || tabs.dataset.bound) return;
+    tabs.dataset.bound = '1';
+    tabs.addEventListener('click', function (e) {
+      const btn = e.target.closest('[data-profile-tab]');
+      if (!btn) return;
+      switchTab(btn.getAttribute('data-profile-tab'));
+    });
+  }
+
+  function bindEditForm() {
+    const form = el('edit-profile-form');
+    if (!form || form.dataset.bound) return;
+    form.dataset.bound = '1';
+    form.addEventListener('submit', function (e) { e.preventDefault(); submitEdit(); });
+    const saveBtn = el('profile-save-btn');
+    if (saveBtn) saveBtn.addEventListener('click', function (e) { e.preventDefault(); submitEdit(); });
+  }
+
+  async function submitEdit() {
+    const form = el('edit-profile-form');
+    const alertEl = el('edit-profile-alert');
+    const saveBtn = el('profile-save-btn');
+    if (!form) return;
+
+    const fd = new FormData(form);
+    const payload = {
+      name: (fd.get('name') || '').toString().trim(),
+      username: (fd.get('username') || '').toString().trim(),
+      location: (fd.get('location') || '').toString().trim(),
+      bio: (fd.get('bio') || '').toString(),
+      preferredBikeTypes: (fd.get('preferredTypes') || '').toString()
+        .split(',').map(function (s) { return s.trim(); }).filter(Boolean),
+      avatarColor: state.avatarColor
+    };
+
+    if (!payload.name) { showEditAlert('Name cannot be empty', 'error'); return; }
+
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="btn-spinner"></span> Saving...';
+    if (alertEl) alertEl.innerHTML = '';
+
+    try {
+      const userId = global.auth.getUserId();
+      const updated = await api('/api/users/' + encodeURIComponent(userId), { method: 'PUT', body: payload });
+      if (updated) {
+        state.user = Object.assign({}, state.user, updated);
+        global.AppState.user = state.user;
+        global.setAvatarColor(updated.avatarColor || state.avatarColor);
+        renderHero(state.user);
+        renderOverview(state.user);
+        showEditAlert('Profile saved successfully', 'success');
+        u.showToast('Profile updated', 'success');
+      }
+    } catch (e) {
+      showEditAlert(e.message || 'Failed to save profile', 'error');
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = 'Save Changes';
+    }
+  }
+
+  function showEditAlert(msg, type) {
+    const alertEl = el('edit-profile-alert');
+    if (!alertEl) return;
+    const cls = type === 'success' ? 'alert--success' : 'alert--error';
+    alertEl.innerHTML = '<div class="alert ' + cls + '"><div class="alert__content">' + u.escHtml(msg) + '</div></div>';
+    if (type === 'success') {
+      setTimeout(function () { alertEl.innerHTML = ''; }, 4000);
+    }
+  }
+
+  async function loadProfile() {
+    const hero = el('profile-hero');
+    if (hero) hero.setAttribute('aria-busy', 'true');
+
+    const userId = global.auth.getUserId() || 'me';
+    try {
+      const user = await api('/api/users/' + encodeURIComponent(userId));
+      state.user = user;
+      state.avatarColor = user.avatarColor || 1;
+      global.setAvatarColor(state.avatarColor);
+      renderHero(user);
+      renderOverview(user);
+      renderEditForm(user);
+      switchTab('overview');
+    } catch (e) {
+      console.error('loadProfile', e);
+      const user = global.AppState.user || {};
+      state.user = user;
+      renderHero(user);
+      renderOverview(user);
+      renderEditForm(user);
+      if (hero) {
+        hero.insertAdjacentHTML('afterend', '<div class="card"><div class="alert alert--error"><div class="alert__content">' +
+          '<div class="alert__title">Could not load full profile</div>' +
+          '<div class="alert__message">' + u.escHtml(e.message || 'Showing cached data') + '</div>' +
+          '</div></div></div>');
+      }
+    } finally {
+      if (hero) hero.removeAttribute('aria-busy');
+    }
+  }
+
+  async function loadRentals() {
+    const panel = el('rental-history');
+    if (panel) panel.setAttribute('aria-busy', 'true');
+    if (panel) {
+      panel.innerHTML =
+        '<div class="skeleton skeleton--text" style="width:80%;"></div>' +
+        '<div class="skeleton skeleton--text" style="width:60%;"></div>' +
+        '<div class="skeleton skeleton--text" style="width:70%;"></div>';
+    }
+    const userId = global.auth.getUserId() || 'me';
+    try {
+      const response = await api('/api/users/' + encodeURIComponent(userId) + '/rentals');
+      state.rentals = (response && (response.items || response.rentals || response.data || response)) || [];
+    } catch (e) {
+      console.error('loadRentals', e);
+      state.rentals = [];
+    } finally {
+      if (panel) panel.removeAttribute('aria-busy');
+      renderRentals();
+    }
+  }
+
+  async function loadMyPosts() {
+    const panel = el('my-posts');
+    if (panel) {
+      panel.setAttribute('aria-busy', 'true');
+      panel.innerHTML = u.skeletonPostCard() + u.skeletonPostCard();
+    }
+    const userId = global.auth.getUserId() || 'me';
+    try {
+      const response = await api('/api/feed?userId=' + encodeURIComponent(userId));
+      state.posts = (response && (response.items || response.posts || response.data || response)) || [];
+    } catch (e) {
+      console.error('loadMyPosts', e);
+      state.posts = [];
+    } finally {
+      if (panel) panel.removeAttribute('aria-busy');
+      renderMyPosts();
+    }
+  }
+
+  function init() {
+    bindTabs();
+    bindEditForm();
+    switchTab('overview');
+    loadProfile();
+    loadRentals();
+    loadMyPosts();
+  }
+
+  global.ProfileModule = { init: init };
+})(window);
