@@ -3,624 +3,819 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Bikers Portal — Rent, buy, plan trips and connect with fellow riders." />
+  <meta name="description" content="Bikers Portal — Rent, buy, track rides and connect with the cycling community." />
   <title>Bikers Portal</title>
 
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Barlow+Condensed:wght@600;700&family=Inter:wght@300..700&display=swap" rel="stylesheet" />
+  <!-- ── Favicon (inline SVG as data URI) ─────────────── -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,
+    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>
+      <circle cx='8' cy='22' r='5' fill='none' stroke='%2301696f' stroke-width='2.5'/>
+      <circle cx='24' cy='22' r='5' fill='none' stroke='%2301696f' stroke-width='2.5'/>
+      <path d='M8 22 L16 8 L20 14 L24 22' fill='none' stroke='%2301696f' stroke-width='2.5' stroke-linejoin='round'/>
+      <path d='M16 8 L20 14' fill='none' stroke='%2301696f' stroke-width='2.5'/>
+    </svg>" />
 
-  <!-- Icons (Lucide) -->
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
-
-  <!-- Stylesheets -->
+  <!-- ── CSS (load order matters: base → components → layout) ── -->
   <link rel="stylesheet" href="./assets/css/base.css" />
-  <link rel="stylesheet" href="./assets/css/layout.css" />
   <link rel="stylesheet" href="./assets/css/components.css" />
-
-  <style>
-    /* ── Inline page-transition fade ── */
-    #page-content { transition: opacity 0.18s ease; }
-    #page-content.fading { opacity: 0; }
-
-    /* ── Auth shell hidden by default until JS decides ── */
-    #auth-shell  { display: none; }
-    #app-shell   { display: none; }
-
-    /* ── Splash screen ── */
-    #splash {
-      position: fixed; inset: 0; z-index: 9999;
-      background: var(--color-bg);
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: var(--space-4);
-      transition: opacity 0.4s ease;
-    }
-    #splash.hidden { opacity: 0; pointer-events: none; }
-    .splash-logo { display: flex; align-items: center; gap: var(--space-3); }
-    .splash-logo__text {
-      font-family: var(--font-display);
-      font-size: var(--text-xl);
-      font-weight: 700;
-      color: var(--color-text);
-    }
-    .splash-spinner {
-      width: 28px; height: 28px;
-      border: 3px solid var(--color-surface-dynamic);
-      border-top-color: var(--color-primary);
-      border-radius: 9999px;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-  </style>
+  <link rel="stylesheet" href="./assets/css/layout.css" />
 </head>
 
 <body>
-  <!-- Skip link -->
-  <a class="skip-link" href="#page-content">Skip to main content</a>
 
-  <!-- ── Splash ──────────────────────────────────────────── -->
-  <div id="splash" role="status" aria-label="Loading Bikers Portal">
-    <div class="splash-logo">
-      <!-- SVG Logo -->
-      <svg aria-label="Bikers Portal logo" width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="18" cy="18" r="17" stroke="var(--color-primary)" stroke-width="2"/>
-        <circle cx="10" cy="23" r="4.5" stroke="var(--color-primary)" stroke-width="2"/>
-        <circle cx="26" cy="23" r="4.5" stroke="var(--color-primary)" stroke-width="2"/>
-        <path d="M14 23 L18 12 L22 16 L26 23" stroke="var(--color-primary)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" fill="none"/>
-        <path d="M10 23 L18 12" stroke="var(--color-text-faint)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-        <circle cx="18" cy="11" r="2" fill="var(--color-primary)"/>
-      </svg>
-      <span class="splash-logo__text">BikePortal</span>
-    </div>
-    <div class="splash-spinner"></div>
-  </div>
+<!-- ════════════════════════════════════════════════════════
+     SPLASH SCREEN
+════════════════════════════════════════════════════════ -->
+<div id="splash" role="status" aria-label="Loading Bikers Portal">
+  <!-- Inline SVG logo -->
+  <svg width="56" height="56" viewBox="0 0 32 32" fill="none"
+       xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <circle cx="8"  cy="22" r="5" stroke="var(--color-primary)" stroke-width="2.5"/>
+    <circle cx="24" cy="22" r="5" stroke="var(--color-primary)" stroke-width="2.5"/>
+    <path d="M8 22 L16 8 L20 14 L24 22"
+          stroke="var(--color-primary)" stroke-width="2.5"
+          stroke-linejoin="round" fill="none"/>
+    <path d="M16 8 L20 14"
+          stroke="var(--color-primary)" stroke-width="2.5"
+          stroke-linecap="round" fill="none"/>
+  </svg>
+  <div class="splash-spinner" aria-hidden="true"></div>
+</div>
 
-  <!-- ════════════════════════════════════════════════════════
-       AUTH SHELL  (#auth)
-  ═══════════════════════════════════════════════════════════ -->
-  <div id="auth-shell" role="main">
-    <!-- Left: form panel -->
-    <div class="auth-panel">
-      <div class="auth-card">
-        <!-- Logo -->
-        <div class="auth-logo">
-          <svg aria-label="BikePortal" width="32" height="32" viewBox="0 0 36 36" fill="none">
-            <circle cx="18" cy="18" r="17" stroke="var(--color-primary)" stroke-width="2"/>
-            <circle cx="10" cy="23" r="4.5" stroke="var(--color-primary)" stroke-width="2"/>
-            <circle cx="26" cy="23" r="4.5" stroke="var(--color-primary)" stroke-width="2"/>
-            <path d="M14 23 L18 12 L22 16 L26 23" stroke="var(--color-primary)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" fill="none"/>
-            <circle cx="18" cy="11" r="2" fill="var(--color-primary)"/>
-          </svg>
-          <span style="font-family:var(--font-display);font-size:var(--text-lg);font-weight:700;">BikePortal</span>
-        </div>
 
-        <!-- Login Form -->
-        <div id="auth-login-view">
-          <p class="auth-headline">Welcome back, rider.</p>
-          <p class="auth-subtext" style="margin-top:var(--space-1)">Sign in to your account to continue.</p>
+<!-- ════════════════════════════════════════════════════════
+     AUTH SHELL  (login / register)
+════════════════════════════════════════════════════════ -->
+<div id="auth-shell" role="main" aria-label="Authentication">
 
-          <form id="login-form" class="auth-form" style="margin-top:var(--space-5);" novalidate>
-            <div id="login-alert" class="alert alert-error" style="display:none;" role="alert">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              <span id="login-alert-msg">Invalid credentials.</span>
-            </div>
+  <!-- Left: form panel -->
+  <div class="auth-panel">
+    <div class="auth-form-box">
 
-            <div class="form-group">
-              <label class="form-label required" for="login-email">Email</label>
-              <div class="input-group">
-                <span class="input-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>
-                <input type="email" id="login-email" class="form-control" placeholder="you@example.com" autocomplete="email" required />
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label required" for="login-password">Password</label>
-              <div class="input-group">
-                <span class="input-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
-                <input type="password" id="login-password" class="form-control" placeholder="••••••••" autocomplete="current-password" required />
-              </div>
-            </div>
-
-            <button type="submit" id="login-btn" class="btn btn-primary w-full" style="margin-top:var(--space-2);">Sign In</button>
-          </form>
-
-          <div class="divider-text" style="margin:var(--space-5) 0;">or</div>
-
-          <p class="auth-footer">
-            Don't have an account?
-            <a href="#" id="go-register">Create one</a>
-          </p>
-        </div>
-
-        <!-- Register Form -->
-        <div id="auth-register-view" style="display:none;">
-          <p class="auth-headline">Join the ride.</p>
-          <p class="auth-subtext" style="margin-top:var(--space-1)">Create your BikePortal account.</p>
-
-          <form id="register-form" class="auth-form" style="margin-top:var(--space-5);" novalidate>
-            <div id="register-alert" class="alert alert-error" style="display:none;" role="alert">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              <span id="register-alert-msg">Something went wrong.</span>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label required" for="reg-name">Full Name</label>
-              <input type="text" id="reg-name" class="form-control" placeholder="Arjun Mehta" autocomplete="name" required />
-            </div>
-
-            <div class="form-group">
-              <label class="form-label required" for="reg-email">Email</label>
-              <div class="input-group">
-                <span class="input-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>
-                <input type="email" id="reg-email" class="form-control" placeholder="you@example.com" autocomplete="email" required />
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label required" for="reg-password">Password</label>
-              <div class="input-group">
-                <span class="input-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
-                <input type="password" id="reg-password" class="form-control" placeholder="Min. 8 characters" autocomplete="new-password" required minlength="8" />
-              </div>
-              <span class="form-hint">At least 8 characters.</span>
-            </div>
-
-            <button type="submit" id="register-btn" class="btn btn-primary w-full" style="margin-top:var(--space-2);">Create Account</button>
-          </form>
-
-          <p class="auth-footer" style="margin-top:var(--space-5);">
-            Already have an account?
-            <a href="#" id="go-login">Sign in</a>
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Right: hero panel -->
-    <div class="auth-hero" aria-hidden="true">
-      <div class="auth-hero__bg"></div>
-      <div class="auth-hero__content">
-        <svg width="56" height="56" viewBox="0 0 36 36" fill="none" style="color:var(--color-primary)">
-          <circle cx="18" cy="18" r="17" stroke="currentColor" stroke-width="2"/>
-          <circle cx="10" cy="23" r="4.5" stroke="currentColor" stroke-width="2"/>
-          <circle cx="26" cy="23" r="4.5" stroke="currentColor" stroke-width="2"/>
-          <path d="M14 23 L18 12 L22 16 L26 23" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" fill="none"/>
-          <circle cx="18" cy="11" r="2" fill="currentColor"/>
+      <!-- Brand -->
+      <div class="auth-brand" aria-label="Bikers Portal">
+        <svg width="36" height="36" viewBox="0 0 32 32" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="8"  cy="22" r="5" stroke="var(--color-primary)" stroke-width="2.5"/>
+          <circle cx="24" cy="22" r="5" stroke="var(--color-primary)" stroke-width="2.5"/>
+          <path d="M8 22 L16 8 L20 14 L24 22"
+                stroke="var(--color-primary)" stroke-width="2.5"
+                stroke-linejoin="round" fill="none"/>
+          <path d="M16 8 L20 14"
+                stroke="var(--color-primary)" stroke-width="2.5"
+                stroke-linecap="round" fill="none"/>
         </svg>
-        <p class="auth-hero__tagline">Rent. Buy. Ride.<br/>Track every journey.</p>
-        <p class="auth-hero__sub">AI-powered bike recommendations, real-time trip planning, and a community of riders — all in one place.</p>
-        <div class="flex gap-3" style="flex-wrap:wrap;">
-          <span class="badge badge-primary with-dot">10K+ Bikes Listed</span>
-          <span class="badge badge-neutral with-dot">AI Recommendations</span>
-          <span class="badge badge-neutral with-dot">Trip Planner</span>
-        </div>
-      </div>
-    </div>
-  </div><!-- /#auth-shell -->
-
-
-  <!-- ════════════════════════════════════════════════════════
-       APP SHELL (Authenticated)
-  ═══════════════════════════════════════════════════════════ -->
-  <div id="app-shell">
-
-    <!-- ── Sidebar ───────────────────────────────────────── -->
-    <aside id="sidebar" role="navigation" aria-label="Main navigation">
-      <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Collapse sidebar" title="Collapse sidebar">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-      </button>
-
-      <!-- Logo -->
-      <div class="sidebar-logo">
-        <span class="sidebar-logo__mark">
-          <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
-            <circle cx="18" cy="18" r="17" stroke="var(--color-primary)" stroke-width="2"/>
-            <circle cx="10" cy="23" r="4.5" stroke="var(--color-primary)" stroke-width="2"/>
-            <circle cx="26" cy="23" r="4.5" stroke="var(--color-primary)" stroke-width="2"/>
-            <path d="M14 23 L18 12 L22 16 L26 23" stroke="var(--color-primary)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" fill="none"/>
-            <circle cx="18" cy="11" r="2" fill="var(--color-primary)"/>
-          </svg>
-        </span>
-        <span class="sidebar-logo__text">BikePortal</span>
+        <span class="auth-brand__name">Bikers Portal</span>
       </div>
 
-      <!-- Nav -->
-      <nav class="sidebar-nav" aria-label="Primary">
-        <!-- Main -->
-        <div>
-          <div class="nav-section-label">Main</div>
-          <a href="#feed" class="nav-item active" data-route="feed" aria-current="page">
-            <span class="nav-item__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
-            <span class="nav-item__label">Feed</span>
-          </a>
-          <a href="#bikes" class="nav-item" data-route="bikes">
-            <span class="nav-item__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M12 17V7l-2 2"/><path d="M8 12l4-4 4 4"/></svg></span>
-            <span class="nav-item__label">Bikes</span>
-          </a>
-          <a href="#recommend" class="nav-item" data-route="recommend">
-            <span class="nav-item__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg></span>
-            <span class="nav-item__label">AI Picks</span>
-            <span class="nav-item__badge">New</span>
-          </a>
-          <a href="#trips" class="nav-item" data-route="trips">
-            <span class="nav-item__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg></span>
-            <span class="nav-item__label">Trips</span>
-          </a>
-        </div>
+      <!-- ── Login Form ── -->
+      <div id="login-view">
+        <h1 class="auth-title">Welcome back</h1>
+        <p class="auth-subtitle">Sign in to your account to continue.</p>
 
-        <!-- Account -->
-        <div>
-          <div class="nav-section-label">Account</div>
-          <a href="#profile" class="nav-item" data-route="profile">
-            <span class="nav-item__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-            <span class="nav-item__label">Profile</span>
-          </a>
-        </div>
-      </nav>
-
-      <!-- Sidebar footer: user info -->
-      <div class="sidebar-footer">
-        <div class="nav-item" id="sidebar-user" style="cursor:default;">
-          <span class="nav-item__icon">
-            <div class="avatar avatar-sm" id="sidebar-avatar" style="background:var(--color-primary-highlight);color:var(--color-primary);">R</div>
-          </span>
-          <div class="nav-item__label" style="display:flex;flex-direction:column;gap:2px;overflow:hidden;">
-            <span id="sidebar-user-name" class="truncate" style="font-size:var(--text-sm);font-weight:600;color:var(--color-text);">Rider</span>
-            <span id="sidebar-user-email" class="truncate" style="font-size:var(--text-xs);color:var(--color-text-muted);">rider@email.com</span>
-          </div>
-        </div>
-
-        <button id="logout-btn" class="nav-item" style="margin-top:var(--space-1);color:var(--color-text-muted);">
-          <span class="nav-item__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>
-          <span class="nav-item__label">Log Out</span>
-        </button>
-      </div>
-    </aside>
-
-    <!-- Sidebar overlay (mobile) -->
-    <div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
-
-    <!-- ── Main area ─────────────────────────────────────── -->
-    <div class="app-main">
-
-      <!-- Topbar -->
-      <header id="topbar" role="banner">
-        <div class="topbar-left">
-          <!-- Mobile menu toggle -->
-          <button class="menu-toggle" id="menu-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-          </button>
-
-          <!-- Breadcrumb -->
-          <nav class="breadcrumb" aria-label="Breadcrumb">
-            <span class="breadcrumb__current" id="topbar-page-title">Feed</span>
-          </nav>
-        </div>
-
-        <div class="topbar-right">
-          <!-- Search -->
-          <div class="search-bar input-group" style="display:none;" id="topbar-search-wrap">
-            <span class="input-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-            <input type="search" class="form-control" id="topbar-search" placeholder="Search…" aria-label="Search" style="border-radius:var(--radius-full);padding-left:var(--space-10);min-height:38px;" />
+        <form class="auth-form" id="login-form" novalidate>
+          <div class="form-group">
+            <label class="form-label required" for="login-email">Email Address</label>
+            <input type="email" id="login-email" class="form-control"
+                   placeholder="you@example.com"
+                   autocomplete="email" required />
           </div>
 
-          <!-- Notifications -->
-          <button class="notif-btn" id="notif-btn" aria-label="Notifications">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-            <span class="notif-dot" id="notif-dot"></span>
-          </button>
-
-          <!-- Dark mode toggle -->
-          <button class="theme-toggle" id="theme-toggle" data-theme-toggle aria-label="Switch to dark mode">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          </button>
-
-          <!-- User dropdown -->
-          <div class="dropdown" id="user-dropdown">
-            <button class="btn btn-ghost btn-icon" id="user-menu-btn" aria-haspopup="true" aria-expanded="false" aria-label="User menu" style="min-height:40px;width:40px;">
-              <div class="avatar avatar-sm" id="topbar-avatar" style="background:var(--color-primary-highlight);color:var(--color-primary);">R</div>
-            </button>
-            <div class="dropdown-menu" id="user-menu" role="menu">
-              <div style="padding:var(--space-2) var(--space-4) var(--space-3);">
-                <div style="font-size:var(--text-sm);font-weight:600;color:var(--color-text);" id="dropdown-name">Rider</div>
-                <div style="font-size:var(--text-xs);color:var(--color-text-muted);" id="dropdown-email">rider@email.com</div>
-              </div>
-              <div class="dropdown-divider"></div>
-              <a href="#profile" class="dropdown-item" role="menuitem">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                Profile
-              </a>
-              <div class="dropdown-divider"></div>
-              <button class="dropdown-item danger" id="dropdown-logout" role="menuitem">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                Log Out
+          <div class="form-group">
+            <label class="form-label required" for="login-password">Password</label>
+            <div class="input-group">
+              <input type="password" id="login-password" class="form-control"
+                     placeholder="••••••••"
+                     autocomplete="current-password" required
+                     style="padding-right: var(--space-10);" />
+              <button type="button"
+                      class="input-icon input-icon-right pass-toggle-btn"
+                      data-target="login-password"
+                      aria-label="Show password">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
               </button>
             </div>
           </div>
+
+          <!-- Alert -->
+          <div id="login-alert" class="alert alert-error"
+               style="display:none;" role="alert" aria-live="assertive">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span id="login-alert-msg"></span>
+          </div>
+
+          <button type="submit" class="btn btn-primary auth-submit-btn" id="login-btn">
+            Sign In
+          </button>
+        </form>
+
+        <p class="auth-footer">
+          Don't have an account?
+          <span class="auth-link" id="go-register" tabindex="0" role="button"
+                aria-label="Switch to register">Create one</span>
+        </p>
+      </div><!-- /login-view -->
+
+      <!-- ── Register Form ── -->
+      <div id="register-view" style="display:none;">
+        <h1 class="auth-title">Create account</h1>
+        <p class="auth-subtitle">Join the community of riders.</p>
+
+        <form class="auth-form" id="register-form" novalidate>
+          <div class="form-group">
+            <label class="form-label required" for="reg-name">Full Name</label>
+            <input type="text" id="reg-name" class="form-control"
+                   placeholder="Your name"
+                   autocomplete="name" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label required" for="reg-email">Email Address</label>
+            <input type="email" id="reg-email" class="form-control"
+                   placeholder="you@example.com"
+                   autocomplete="email" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label required" for="reg-password">Password</label>
+            <div class="input-group">
+              <input type="password" id="reg-password" class="form-control"
+                     placeholder="Min. 8 characters"
+                     autocomplete="new-password" required minlength="8"
+                     style="padding-right: var(--space-10);" />
+              <button type="button"
+                      class="input-icon input-icon-right pass-toggle-btn"
+                      data-target="reg-password"
+                      aria-label="Show password">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Alert -->
+          <div id="register-alert" class="alert alert-error"
+               style="display:none;" role="alert" aria-live="assertive">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span id="register-alert-msg"></span>
+          </div>
+
+          <button type="submit" class="btn btn-primary auth-submit-btn" id="register-btn">
+            Create Account
+          </button>
+        </form>
+
+        <p class="auth-footer">
+          Already have an account?
+          <span class="auth-link" id="go-login" tabindex="0" role="button"
+                aria-label="Switch to login">Sign in</span>
+        </p>
+      </div><!-- /register-view -->
+
+    </div><!-- /auth-form-box -->
+  </div><!-- /auth-panel -->
+
+  <!-- Right: hero panel (hidden on mobile) -->
+  <div class="auth-hero" aria-hidden="true">
+    <div class="auth-hero__content">
+      <p class="auth-hero__tagline">Your ride,<br/>your community.</p>
+      <div class="auth-hero__feature">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2">
+          <circle cx="5" cy="17" r="3"/>
+          <circle cx="19" cy="17" r="3"/>
+          <path d="M12 17V7l-2 2"/>
+          <path d="M8 12l4-4 4 4"/>
+        </svg>
+        Browse &amp; rent bikes near you
+      </div>
+      <div class="auth-hero__feature">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2">
+          <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+        </svg>
+        Plan and track every ride
+      </div>
+      <div class="auth-hero__feature">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        Connect with the community
+      </div>
+    </div>
+  </div>
+
+</div><!-- /auth-shell -->
+
+
+<!-- ════════════════════════════════════════════════════════
+     APP SHELL  (authenticated)
+════════════════════════════════════════════════════════ -->
+<div id="app-shell" aria-label="Bikers Portal application">
+
+  <!-- ── Sidebar overlay (mobile) ── -->
+  <div id="sidebar-overlay" aria-hidden="true"></div>
+
+  <!-- ── Sidebar ── -->
+  <nav id="app-sidebar" aria-label="Main navigation">
+
+    <!-- Brand + collapse toggle -->
+    <div class="sidebar-brand">
+      <svg width="28" height="28" viewBox="0 0 32 32" fill="none"
+           xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="flex-shrink:0;">
+        <circle cx="8"  cy="22" r="5" stroke="var(--color-primary)" stroke-width="2.5"/>
+        <circle cx="24" cy="22" r="5" stroke="var(--color-primary)" stroke-width="2.5"/>
+        <path d="M8 22 L16 8 L20 14 L24 22"
+              stroke="var(--color-primary)" stroke-width="2.5"
+              stroke-linejoin="round" fill="none"/>
+        <path d="M16 8 L20 14"
+              stroke="var(--color-primary)" stroke-width="2.5"
+              stroke-linecap="round" fill="none"/>
+      </svg>
+      <span class="sidebar-brand__name">Bikers Portal</span>
+      <button id="sidebar-collapse-btn"
+              class="btn btn-ghost btn-icon btn-sm"
+              style="margin-left:auto;"
+              aria-label="Collapse sidebar" aria-pressed="false">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="6"  x2="21" y2="6"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Nav items -->
+    <div class="sidebar-nav" role="list">
+      <div class="sidebar-nav__label">Menu</div>
+
+      <a href="#feed" class="nav-item" data-route="feed" role="listitem"
+         aria-label="Community Feed">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        <span class="nav-label">Feed</span>
+      </a>
+
+      <a href="#bikes" class="nav-item" data-route="bikes" role="listitem"
+         aria-label="Bikes — Rent and Buy">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="5" cy="17" r="3"/>
+          <circle cx="19" cy="17" r="3"/>
+          <path d="M12 17V7l-2 2"/>
+          <path d="M8 12l4-4 4 4"/>
+        </svg>
+        <span class="nav-label">Bikes</span>
+      </a>
+
+      <a href="#recommendation" class="nav-item" data-route="recommendation" role="listitem"
+         aria-label="AI Bike Recommendations">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+        <span class="nav-label">AI Picks</span>
+      </a>
+
+      <a href="#trips" class="nav-item" data-route="trips" role="listitem"
+         aria-label="Trip Planner">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+        </svg>
+        <span class="nav-label">Trips</span>
+      </a>
+
+      <a href="#profile" class="nav-item" data-route="profile" role="listitem"
+         aria-label="My Profile">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <span class="nav-label">Profile</span>
+      </a>
+    </div><!-- /sidebar-nav -->
+
+    <!-- User footer -->
+    <div class="sidebar-footer">
+      <div class="sidebar-user" id="sidebar-user-btn"
+           aria-label="User account" role="button" tabindex="0">
+        <div class="avatar avatar-sm"
+             id="sidebar-avatar"
+             style="background: var(--color-primary-highlight); color: var(--color-primary);">
+          R
         </div>
-      </header>
+        <div class="sidebar-user__info">
+          <div class="sidebar-user__name"  id="sidebar-user-name">Rider</div>
+          <div class="sidebar-user__email" id="sidebar-user-email">—</div>
+        </div>
+      </div>
+    </div>
 
-      <!-- ── Page Content (SPA target) ─────────────────── -->
-      <main id="page-content" tabindex="-1" aria-live="polite" aria-label="Page content">
-        <!-- Injected by router.js -->
-      </main>
+  </nav><!-- /app-sidebar -->
 
-    </div><!-- /.app-main -->
-  </div><!-- /#app-shell -->
 
-  <!-- ── Mobile bottom nav ─────────────────────────────── -->
-  <nav class="mobile-nav" aria-label="Mobile navigation">
-    <ul class="mobile-nav__list" role="list">
-      <li class="mobile-nav__item">
-        <button class="mobile-nav__btn active" data-route="feed" aria-label="Feed">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          Feed
+  <!-- ── Topbar ── -->
+  <header id="app-topbar" role="banner">
+    <!-- Hamburger — mobile only -->
+    <button id="sidebar-mobile-toggle"
+            class="btn btn-ghost btn-icon"
+            aria-label="Open navigation menu"
+            aria-expanded="false"
+            aria-controls="app-sidebar">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="6"  x2="21" y2="6"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+
+    <!-- Breadcrumb -->
+    <div class="topbar-breadcrumb" id="topbar-title" aria-live="polite">
+      Feed
+    </div>
+
+    <!-- Actions -->
+    <div class="topbar-actions">
+
+      <!-- Search (desktop) -->
+      <div class="input-group" style="display:none; width:220px;" id="topbar-search-wrap">
+        <span class="input-icon" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </span>
+        <input type="search" id="topbar-search" class="form-control form-control-sm"
+               placeholder="Search…"
+               aria-label="Global search"
+               style="padding-left:var(--space-9); border-radius:var(--radius-full);" />
+      </div>
+
+      <!-- Notifications -->
+      <div class="notif-bell">
+        <button class="btn btn-ghost btn-icon"
+                id="notif-btn"
+                aria-label="Notifications" aria-haspopup="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
         </button>
-      </li>
-      <li class="mobile-nav__item">
-        <button class="mobile-nav__btn" data-route="bikes" aria-label="Bikes">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M12 17V7l-2 2"/><path d="M8 12l4-4 4 4"/></svg>
-          Bikes
+        <span class="notif-dot" id="notif-dot" aria-hidden="true"></span>
+      </div>
+
+      <!-- Theme toggle -->
+      <button id="theme-toggle"
+              class="btn btn-ghost btn-icon"
+              data-theme-toggle
+              aria-label="Switch to dark mode">
+        <!-- Icon injected by JS -->
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="5"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42
+                   M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+      </button>
+
+      <!-- User dropdown -->
+      <div class="dropdown" id="topbar-user-dropdown">
+        <button class="topbar-user-trigger btn btn-ghost"
+                id="topbar-user-btn"
+                aria-haspopup="true"
+                aria-expanded="false"
+                aria-label="User menu">
+          <div class="avatar avatar-sm"
+               id="topbar-avatar"
+               style="background:var(--color-primary-highlight); color:var(--color-primary);">
+            R
+          </div>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
         </button>
-      </li>
-      <li class="mobile-nav__item">
-        <button class="mobile-nav__btn" data-route="recommend" aria-label="AI Picks">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
-          AI Picks
-        </button>
-      </li>
-      <li class="mobile-nav__item">
-        <button class="mobile-nav__btn" data-route="trips" aria-label="Trips">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
-          Trips
-        </button>
-      </li>
-      <li class="mobile-nav__item">
-        <button class="mobile-nav__btn" data-route="profile" aria-label="Profile">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          Profile
-        </button>
-      </li>
-    </ul>
+
+        <div class="dropdown-menu" id="topbar-dropdown-menu" role="menu">
+          <div style="padding:var(--space-3) var(--space-4); border-bottom:1px solid var(--color-divider);">
+            <div style="font-size:var(--text-sm);font-weight:600;" id="dd-user-name">Rider</div>
+            <div style="font-size:var(--text-xs);color:var(--color-text-muted);" id="dd-user-email">—</div>
+          </div>
+          <a href="#profile" class="dropdown-item" role="menuitem">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            My Profile
+          </a>
+          <a href="#trips" class="dropdown-item" role="menuitem">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+            </svg>
+            My Trips
+          </a>
+          <div class="dropdown-divider"></div>
+          <button class="dropdown-item danger" id="logout-btn" role="menuitem">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Sign Out
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /topbar-actions -->
+  </header><!-- /app-topbar -->
+
+
+  <!-- ── Main content area ── -->
+  <main id="app-main" tabindex="-1">
+
+    <!-- Skip link target -->
+    <a class="sr-only" id="main-content-anchor" tabindex="-1" aria-hidden="true">Main content</a>
+
+    <!-- Page fragments are injected here by router.js -->
+    <div id="page-content" role="region" aria-live="polite" aria-label="Page content">
+      <!-- Loading state until router kicks in -->
+      <div style="padding:var(--space-16); text-align:center; color:var(--color-text-muted);">
+        <div class="splash-spinner" style="margin:0 auto;"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── Mobile bottom nav ── -->
+  <nav id="mobile-nav" aria-label="Mobile navigation">
+    <button class="mobile-nav-btn active" data-route="feed" aria-label="Feed">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      Feed
+    </button>
+    <button class="mobile-nav-btn" data-route="bikes" aria-label="Bikes">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="5" cy="17" r="3"/>
+        <circle cx="19" cy="17" r="3"/>
+        <path d="M12 17V7l-2 2"/>
+        <path d="M8 12l4-4 4 4"/>
+      </svg>
+      Bikes
+    </button>
+    <button class="mobile-nav-btn" data-route="recommendation" aria-label="AI Picks">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+      AI Picks
+    </button>
+    <button class="mobile-nav-btn" data-route="trips" aria-label="Trips">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+      </svg>
+      Trips
+    </button>
+    <button class="mobile-nav-btn" data-route="profile" aria-label="Profile">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+      Profile
+    </button>
   </nav>
 
-  <!-- ── Toast container ───────────────────────────────── -->
-  <div class="toast-container" id="toast-container" aria-live="assertive" aria-atomic="true"></div>
+</div><!-- /app-shell -->
 
 
-  <!-- ══════════════════════════════════════════════════════
-       SCRIPTS
-  ═══════════════════════════════════════════════════════ -->
-  <script>
-  /* ── Theme init (runs before paint) ─────────────────────── */
-  (function () {
-    const saved = null; // no localStorage in sandbox — use system pref
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const theme = saved || (prefersDark ? 'dark' : 'light');
-    document.documentElement.setAttribute('data-theme', theme);
-  })();
-  </script>
+<!-- ════════════════════════════════════════════════════════
+     TOAST CONTAINER
+════════════════════════════════════════════════════════ -->
+<div id="toast-container" role="region" aria-live="assertive" aria-atomic="true"
+     aria-label="Notifications"></div>
 
-  <!-- Core modules -->
-  <script src="./assets/js/state.js"  defer></script>
-  <script src="./assets/js/api.js"    defer></script>
-  <script src="./assets/js/auth.js"   defer></script>
-  <script src="./assets/js/utils.js"  defer></script>
 
-  <!-- Page modules -->
-  <script src="./assets/js/modules/feed.js"           defer></script>
-  <script src="./assets/js/modules/bikes.js"          defer></script>
-  <script src="./assets/js/modules/recommendation.js" defer></script>
-  <script src="./assets/js/modules/trip.js"           defer></script>
-  <script src="./assets/js/modules/profile.js"        defer></script>
+<!-- ════════════════════════════════════════════════════════
+     JAVASCRIPT  (deferred, correct load order)
+     state → api → auth → utils → modules → router (last)
+════════════════════════════════════════════════════════ -->
+<script src="./assets/js/state.js"   defer></script>
+<script src="./assets/js/api.js"     defer></script>
+<script src="./assets/js/auth.js"    defer></script>
+<script src="./assets/js/utils.js"   defer></script>
 
-  <!-- Router (loads last, orchestrates everything) -->
-  <script src="./assets/js/router.js" defer></script>
+<!-- Page modules -->
+<script src="./assets/js/modules/feed.js"           defer></script>
+<script src="./assets/js/modules/bikes.js"          defer></script>
+<script src="./assets/js/modules/recommendation.js" defer></script>
+<script src="./assets/js/modules/trip.js"           defer></script>
+<script src="./assets/js/modules/profile.js"        defer></script>
 
-  <script>
-  /* ─────────────────────────────────────────────────────────
-     BOOTSTRAP — runs after all deferred scripts load
-     Wires up everything that doesn't belong in a module.
-  ───────────────────────────────────────────────────────── */
-  document.addEventListener('DOMContentLoaded', () => {
+<!-- Router must load last so all module init() functions are registered -->
+<script src="./assets/js/router.js" defer></script>
 
-    /* ── Splash hide ─────────────────────────────────── */
-    const splash = document.getElementById('splash');
-    setTimeout(() => {
-      splash.classList.add('hidden');
-      setTimeout(() => splash.remove(), 450);
-    }, 600);
+<!-- ── Bootstrap script (inline, runs after defer scripts) ── -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
 
-    /* ── Theme toggle ─────────────────────────────── */
-    const html        = document.documentElement;
-    const themeToggle = document.getElementById('theme-toggle');
-    const SUN_ICON    = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
-    const MOON_ICON   = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+  /* ── Splash fade-out ──────────────────────────────────── */
+  const splash = document.getElementById('splash');
+  setTimeout(() => {
+    splash.classList.add('fade-out');
+    setTimeout(() => splash.remove(), 400);
+  }, 600);
 
-    function applyTheme(t) {
-      html.setAttribute('data-theme', t);
-      themeToggle.innerHTML = t === 'dark' ? SUN_ICON : MOON_ICON;
-      themeToggle.setAttribute('aria-label', `Switch to ${t === 'dark' ? 'light' : 'dark'} mode`);
-    }
-    applyTheme(html.getAttribute('data-theme') || 'light');
-    themeToggle.addEventListener('click', () => {
-      applyTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
-    });
+  /* ── Theme toggle ─────────────────────────────────────── */
+  const html      = document.documentElement;
+  const themeBtn  = document.getElementById('theme-toggle');
+  const sunIcon   = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
+  const moonIcon  = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
 
-    /* ── Sidebar collapse ─────────────────────────── */
-    const appShell      = document.getElementById('app-shell');
-    const sidebarToggle = document.getElementById('sidebar-toggle');
-    sidebarToggle && sidebarToggle.addEventListener('click', () => {
-      const collapsed = appShell.classList.toggle('sidebar-collapsed');
-      sidebarToggle.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
-    });
+  let currentTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  html.setAttribute('data-theme', currentTheme);
+  themeBtn.innerHTML = currentTheme === 'dark' ? sunIcon : moonIcon;
+  themeBtn.setAttribute('aria-label', `Switch to ${currentTheme === 'dark' ? 'light' : 'dark'} mode`);
 
-    /* ── Mobile drawer ────────────────────────────── */
-    const sidebar        = document.getElementById('sidebar');
-    const menuToggle     = document.getElementById('menu-toggle');
-    const sidebarOverlay = document.getElementById('sidebar-overlay');
-
-    function openDrawer() {
-      sidebar.classList.add('drawer-open');
-      sidebarOverlay.classList.add('open');
-      menuToggle.setAttribute('aria-expanded', 'true');
-      document.body.style.overflow = 'hidden';
-    }
-    function closeDrawer() {
-      sidebar.classList.remove('drawer-open');
-      sidebarOverlay.classList.remove('open');
-      menuToggle.setAttribute('aria-expanded', 'false');
-      document.body.style.overflow = '';
-    }
-    menuToggle     && menuToggle.addEventListener('click', openDrawer);
-    sidebarOverlay && sidebarOverlay.addEventListener('click', closeDrawer);
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
-
-    /* ── User dropdown ────────────────────────────── */
-    const userDropdown = document.getElementById('user-dropdown');
-    const userMenuBtn  = document.getElementById('user-menu-btn');
-    userMenuBtn && userMenuBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const open = userDropdown.classList.toggle('open');
-      userMenuBtn.setAttribute('aria-expanded', String(open));
-    });
-    document.addEventListener('click', () => {
-      userDropdown && userDropdown.classList.remove('open');
-      userMenuBtn  && userMenuBtn.setAttribute('aria-expanded', 'false');
-    });
-
-    /* ── Logout ───────────────────────────────────── */
-    function handleLogout() {
-      if (window.AppAuth) window.AppAuth.logout();
-    }
-    document.getElementById('logout-btn')      && document.getElementById('logout-btn').addEventListener('click', handleLogout);
-    document.getElementById('dropdown-logout') && document.getElementById('dropdown-logout').addEventListener('click', handleLogout);
-
-    /* ── Auth form toggles ────────────────────────── */
-    const loginView    = document.getElementById('auth-login-view');
-    const registerView = document.getElementById('auth-register-view');
-    document.getElementById('go-register') && document.getElementById('go-register').addEventListener('click', (e) => {
-      e.preventDefault();
-      loginView.style.display    = 'none';
-      registerView.style.display = 'block';
-    });
-    document.getElementById('go-login') && document.getElementById('go-login').addEventListener('click', (e) => {
-      e.preventDefault();
-      registerView.style.display = 'none';
-      loginView.style.display    = 'block';
-    });
-
-    /* ── Login form submission ────────────────────── */
-    document.getElementById('login-form') && document.getElementById('login-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const btn   = document.getElementById('login-btn');
-      const alert = document.getElementById('login-alert');
-      const email = document.getElementById('login-email').value.trim();
-      const pass  = document.getElementById('login-password').value;
-      alert.style.display = 'none';
-      btn.classList.add('loading');
-      btn.disabled = true;
-      try {
-        await window.AppAuth.login(email, pass);
-      } catch (err) {
-        document.getElementById('login-alert-msg').textContent = err.message || 'Invalid credentials.';
-        alert.style.display = 'flex';
-      } finally {
-        btn.classList.remove('loading');
-        btn.disabled = false;
-      }
-    });
-
-    /* ── Register form submission ─────────────────── */
-    document.getElementById('register-form') && document.getElementById('register-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const btn   = document.getElementById('register-btn');
-      const alert = document.getElementById('register-alert');
-      const name  = document.getElementById('reg-name').value.trim();
-      const email = document.getElementById('reg-email').value.trim();
-      const pass  = document.getElementById('reg-password').value;
-      alert.style.display = 'none';
-      btn.classList.add('loading');
-      btn.disabled = true;
-      try {
-        await window.AppAuth.register(name, email, pass);
-      } catch (err) {
-        document.getElementById('register-alert-msg').textContent = err.message || 'Registration failed.';
-        alert.style.display = 'flex';
-      } finally {
-        btn.classList.remove('loading');
-        btn.disabled = false;
-      }
-    });
-
-    /* ── Mobile nav routing ───────────────────────── */
-    document.querySelectorAll('.mobile-nav__btn[data-route]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        window.location.hash = '#' + btn.dataset.route;
-      });
-    });
-
-    /* ── Update active nav + mobile nav on route change ── */
-    window.addEventListener('hashchange', syncNav);
-    function syncNav() {
-      const route = (window.location.hash || '#feed').replace('#', '');
-      document.querySelectorAll('.nav-item[data-route]').forEach(el => {
-        el.classList.toggle('active', el.dataset.route === route);
-        el.setAttribute('aria-current', el.dataset.route === route ? 'page' : 'false');
-      });
-      document.querySelectorAll('.mobile-nav__btn[data-route]').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.route === route);
-      });
-      const titles = { feed:'Feed', bikes:'Bikes', recommend:'AI Picks', trips:'Trips', profile:'Profile' };
-      const titleEl = document.getElementById('topbar-page-title');
-      if (titleEl) titleEl.textContent = titles[route] || route;
-      closeDrawer();
-    }
-    syncNav();
-
-    /* ── Update user info in sidebar/topbar ───────── */
-    window.updateUserUI = function(user) {
-      if (!user) return;
-      const initial = (user.name || user.email || 'R')[0].toUpperCase();
-      ['sidebar-avatar','topbar-avatar'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = initial;
-      });
-      const nameEl  = document.getElementById('sidebar-user-name');
-      const emailEl = document.getElementById('sidebar-user-email');
-      const dnEl    = document.getElementById('dropdown-name');
-      const deEl    = document.getElementById('dropdown-email');
-      if (nameEl)  nameEl.textContent  = user.name  || 'Rider';
-      if (emailEl) emailEl.textContent = user.email || '';
-      if (dnEl)    dnEl.textContent    = user.name  || 'Rider';
-      if (deEl)    deEl.textContent    = user.email || '';
-    };
-
-    /* ── Global toast helper ──────────────────────── */
-    window.showToast = function(message, type = 'info', duration = 3500) {
-      const ICONS = {
-        success: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`,
-        error:   `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-error)"   stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
-        warning: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
-        info:    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-secondary)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`
-      };
-      const toast = document.createElement('div');
-      toast.className = `toast toast-${type}`;
-      toast.setAttribute('role', 'status');
-      toast.innerHTML = `${ICONS[type] || ''}<span>${message}</span>`;
-      document.getElementById('toast-container').appendChild(toast);
-      setTimeout(() => {
-        toast.classList.add('dismissing');
-        setTimeout(() => toast.remove(), 280);
-      }, duration);
-    };
-
-    /* ── Lucide icon init (after DOM ready) ───────── */
-    if (window.lucide) window.lucide.createIcons();
+  themeBtn.addEventListener('click', () => {
+    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', currentTheme);
+    themeBtn.innerHTML = currentTheme === 'dark' ? sunIcon : moonIcon;
+    themeBtn.setAttribute('aria-label', `Switch to ${currentTheme === 'dark' ? 'light' : 'dark'} mode`);
   });
-  </script>
+
+  /* ── Toast system ─────────────────────────────────────── */
+  window.showToast = (message, type = 'info', duration = 3500) => {
+    const container = document.getElementById('toast-container');
+    const toast     = document.createElement('div');
+    const icons = {
+      success: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
+      error:   `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
+      warning: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+      info:    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+    };
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `${icons[type] || icons.info}<span>${message}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+      toast.style.opacity    = '0';
+      toast.style.transform  = 'translateX(32px)';
+      setTimeout(() => toast.remove(), 320);
+    }, duration);
+  };
+
+  /* ── Sidebar collapse (desktop) ──────────────────────── */
+  const appShell   = document.getElementById('app-shell');
+  const collapseBtn = document.getElementById('sidebar-collapse-btn');
+  collapseBtn.addEventListener('click', () => {
+    const collapsed = appShell.classList.toggle('sidebar-collapsed');
+    collapseBtn.setAttribute('aria-pressed', String(collapsed));
+    collapseBtn.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+  });
+
+  /* ── Mobile sidebar ───────────────────────────────────── */
+  const sidebar       = document.getElementById('app-sidebar');
+  const overlay       = document.getElementById('sidebar-overlay');
+  const mobileToggle  = document.getElementById('sidebar-mobile-toggle');
+
+  function openMobileSidebar() {
+    sidebar.classList.add('mobile-open');
+    overlay.classList.add('open');
+    mobileToggle.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeMobileSidebar() {
+    sidebar.classList.remove('mobile-open');
+    overlay.classList.remove('open');
+    mobileToggle.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+  }
+
+  mobileToggle.addEventListener('click', openMobileSidebar);
+  overlay.addEventListener('click', closeMobileSidebar);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && sidebar.classList.contains('mobile-open')) closeMobileSidebar();
+  });
+
+  /* Close mobile sidebar when a nav item is clicked */
+  sidebar.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', closeMobileSidebar);
+  });
+
+  /* ── Topbar user dropdown ─────────────────────────────── */
+  const userDropdown = document.getElementById('topbar-user-dropdown');
+  const userBtn      = document.getElementById('topbar-user-btn');
+
+  userBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = userDropdown.classList.toggle('open');
+    userBtn.setAttribute('aria-expanded', String(open));
+  });
+  document.addEventListener('click', () => {
+    userDropdown.classList.remove('open');
+    userBtn.setAttribute('aria-expanded', 'false');
+  });
+
+  /* ── Password show/hide toggles ───────────────────────── */
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.pass-toggle-btn');
+    if (!btn) return;
+    const input = document.getElementById(btn.dataset.target);
+    if (!input) return;
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    const eye = btn.querySelector('svg');
+    if (eye) eye.innerHTML = show
+      ? `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>`
+      : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+  });
+
+  /* ── Auth form toggles ────────────────────────────────── */
+  document.getElementById('go-register').addEventListener('click', () => {
+    document.getElementById('login-view').style.display    = 'none';
+    document.getElementById('register-view').style.display = '';
+  });
+  document.getElementById('go-register').addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') e.target.click();
+  });
+  document.getElementById('go-login').addEventListener('click', () => {
+    document.getElementById('register-view').style.display = 'none';
+    document.getElementById('login-view').style.display    = '';
+  });
+  document.getElementById('go-login').addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') e.target.click();
+  });
+
+  /* ── Logout ───────────────────────────────────────────── */
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    if (window.AppAuth && window.AppAuth.logout) {
+      window.AppAuth.logout();
+    } else {
+      // Fallback: clear state and show auth shell
+      appShell.classList.remove('active');
+      document.getElementById('auth-shell').classList.add('active');
+      window.location.hash = '';
+    }
+  });
+
+  /* ── updateUserUI — called by auth.js after login ─────── */
+  window.updateUserUI = (user) => {
+    if (!user) return;
+    const name    = user.name  || user.email || 'Rider';
+    const email   = user.email || '—';
+    const initial = name[0].toUpperCase();
+
+    ['sidebar-avatar', 'topbar-avatar'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = initial;
+    });
+    const sName  = document.getElementById('sidebar-user-name');
+    const sEmail = document.getElementById('sidebar-user-email');
+    const ddName  = document.getElementById('dd-user-name');
+    const ddEmail = document.getElementById('dd-user-email');
+    if (sName)  sName.textContent  = name;
+    if (sEmail) sEmail.textContent = email;
+    if (ddName)  ddName.textContent  = name;
+    if (ddEmail) ddEmail.textContent = email;
+
+    const composeAv = document.getElementById('compose-avatar');
+    if (composeAv) composeAv.textContent = initial;
+  };
+
+  /* ── Active nav item sync on hash change ──────────────── */
+  function syncNav(route) {
+    const titles = {
+      feed:           'Feed',
+      bikes:          'Bikes',
+      recommendation: 'AI Picks',
+      trips:          'Trips',
+      profile:        'Profile',
+    };
+    // Sidebar
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.classList.toggle('active', item.dataset.route === route);
+    });
+    // Mobile nav
+    document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.route === route);
+    });
+    // Topbar breadcrumb
+    const title = document.getElementById('topbar-title');
+    if (title) title.textContent = titles[route] || 'Bikers Portal';
+  }
+
+  window.addEventListener('hashchange', () => {
+    const route = (window.location.hash || '#feed').replace('#', '');
+    syncNav(route);
+  });
+
+  // Sync on initial load (deferred so router runs first)
+  setTimeout(() => {
+    const route = (window.location.hash || '#feed').replace('#', '');
+    syncNav(route);
+  }, 100);
+
+  /* ── Mobile nav button routing ────────────────────────── */
+  document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      window.location.hash = btn.dataset.route;
+    });
+  });
+
+  /* ── View grid/list toggle for bikes page ─────────────── */
+  document.addEventListener('click', e => {
+    if (e.target.closest('#view-grid-btn')) {
+      document.getElementById('bikes-grid')?.classList.remove('list-view');
+      document.getElementById('view-grid-btn')?.classList.replace('btn-ghost','btn-primary');
+      document.getElementById('view-list-btn')?.classList.replace('btn-primary','btn-ghost');
+      document.getElementById('view-grid-btn')?.setAttribute('aria-pressed','true');
+      document.getElementById('view-list-btn')?.setAttribute('aria-pressed','false');
+    }
+    if (e.target.closest('#view-list-btn')) {
+      document.getElementById('bikes-grid')?.classList.add('list-view');
+      document.getElementById('view-list-btn')?.classList.replace('btn-ghost','btn-primary');
+      document.getElementById('view-grid-btn')?.classList.replace('btn-primary','btn-ghost');
+      document.getElementById('view-list-btn')?.setAttribute('aria-pressed','true');
+      document.getElementById('view-grid-btn')?.setAttribute('aria-pressed','false');
+    }
+  });
+
+  /* ── Tag toggle on feed compose ───────────────────────── */
+  document.addEventListener('click', e => {
+    if (e.target.closest('#compose-tag-btn')) {
+      const row = document.getElementById('compose-tag-row');
+      if (row) {
+        const show = row.style.display === 'none' || !row.style.display;
+        row.style.display = show ? '' : 'none';
+        if (show) document.getElementById('compose-tag-input')?.focus();
+      }
+    }
+  });
+
+  /* ── Password strength meter ───────────────────────────── */
+  document.addEventListener('input', e => {
+    if (e.target.id !== 'new-pass' && e.target.id !== 'reg-password') return;
+    const val = e.target.value;
+    const fill  = document.getElementById('pass-strength-fill');
+    const label = document.getElementById('pass-strength-label');
+    if (!fill) return;
+
+    let score = 0;
+    if (val.length >= 8)           score++;
+    if (/[A-Z]/.test(val))         score++;
+    if (/[0-9]/.test(val))         score++;
+    if (/[^A-Za-z0-9]/.test(val))  score++;
+
+    const levels = [
+      { pct: '25%', cls: 'pass-strength-weak',   text: 'Weak' },
+      { pct: '50%', cls: 'pass-strength-fair',   text: 'Fair' },
+      { pct: '75%', cls: 'pass-strength-good',   text: 'Good' },
+      { pct: '100%',cls: 'pass-strength-strong', text: 'Strong' },
+    ];
+    const level = levels[Math.max(score - 1, 0)];
+    fill.style.width = val.length === 0 ? '0%' : level.pct;
+    fill.className   = val.length === 0 ? '' : level.cls;
+    if (label) label.textContent = val.length === 0 ? '' : level.text;
+  });
+
+}); // DOMContentLoaded
+</script>
 
 </body>
 </html>

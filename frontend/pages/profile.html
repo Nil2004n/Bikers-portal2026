@@ -1,484 +1,698 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Your Bikers Portal profile — personal info, ride stats, payments and security." />
+  <title>Profile — Bikers Portal</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Barlow+Condensed:wght@600;700&family=Inter:wght@300..700&display=swap" rel="stylesheet" />
+
+  <!-- Stylesheets — order matters -->
+  <link rel="stylesheet" href="../assets/css/base.css" />
+  <link rel="stylesheet" href="../assets/css/components.css" />
+  <link rel="stylesheet" href="../assets/css/layout.css" />
+
+  <style>
+    /* ============================================================
+       PROFILE PAGE — Responsive styles
+       Breakpoints match layout.css exactly:
+         1280px  large desktop
+         1024px  laptop / small desktop
+          768px  tablet
+          480px  mobile
+    ============================================================ */
+
+    /* ── Page wrapper ──────────────────────────────────────── */
+    .profile-page {
+      max-width: 860px;
+      width: 100%;
+    }
+
+    /* ── Hero card ─────────────────────────────────────────── */
+    .profile-hero {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-6);
+      flex-wrap: wrap;
+    }
+
+    .profile-hero__avatar-wrap {
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    /* The avatar itself — size driven by JS renderHero, we just
+       handle the overall layout here */
+    .profile-hero__info {
+      flex: 1;
+      min-width: 0;          /* prevent overflow in flex */
+    }
+
+    .profile-hero__name {
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      font-weight: 700;
+      line-height: 1.1;
+      word-break: break-word;
+    }
+
+    .profile-hero__email {
+      font-size: var(--text-sm);
+      color: var(--color-text-muted);
+      margin-top: var(--space-1);
+      word-break: break-all;
+    }
+
+    .profile-hero__badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      margin-top: var(--space-4);
+    }
+
+    /* ── Form grid — 2-col by default ─────────────────────── */
+    .profile-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-4) var(--space-5);
+    }
+
+    .profile-form-grid .full-col {
+      grid-column: 1 / -1;
+    }
+
+    /* ── KPI grid — matches layout.css .kpi-grid overrides ── */
+    /* base: 3 cols, overridden at 1280 → 2, at 480 → 2 */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-4);
+      margin-top: var(--space-5);
+    }
+
+    /* ── Payments table ────────────────────────────────────── */
+    .payments-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: var(--radius-xl);
+      border: 1px solid oklch(from var(--color-text) l c h / 0.08);
+      margin-top: var(--space-5);
+    }
+
+    /* ── Security card spacing ─────────────────────────────── */
+    .security-section {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-5);
+      margin-top: var(--space-5);
+    }
+
+    /* Password form max-width on desktop */
+    .pass-form-inner {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+      max-width: 480px;
+    }
+
+    /* Password strength bar track */
+    .pass-strength-track {
+      height: 4px;
+      border-radius: 2px;
+      background: var(--color-divider);
+      overflow: hidden;
+      margin-top: var(--space-2);
+    }
+
+    #pass-strength-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 2px;
+      transition: width 0.3s ease, background-color 0.3s ease;
+    }
+
+    /* Linked accounts row */
+    .linked-account-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-surface-offset);
+      border-radius: var(--radius-md);
+    }
+
+    .linked-account-info {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      min-width: 0;
+    }
+
+    /* Danger zone */
+    .danger-zone-card {
+      border-color: oklch(from var(--color-error) l c h / 0.25);
+      background: color-mix(in oklch, var(--color-error) 4%, var(--color-surface));
+    }
+
+    .danger-zone-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: var(--space-4);
+      margin-top: var(--space-4);
+    }
+
+    /* Password show/hide toggle inside input */
+    .pass-input-wrap {
+      position: relative;
+    }
+
+    .pass-input-wrap .form-control {
+      padding-right: var(--space-12);
+    }
+
+    .pass-toggle-btn {
+      position: absolute;
+      right: var(--space-3);
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--color-text-faint);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-1);
+      border-radius: var(--radius-sm);
+      min-height: unset;
+      width: auto;
+      height: auto;
+    }
+
+    .pass-toggle-btn:hover { color: var(--color-text-muted); }
+
+    /* ── Form actions bar ──────────────────────────────────── */
+    .profile-form-actions {
+      display: none;    /* shown by JS when editing */
+      margin-top: var(--space-5);
+      justify-content: flex-end;
+      gap: var(--space-3);
+    }
+
+    /* ============================================================
+       RESPONSIVE OVERRIDES
+    ============================================================ */
+
+    /* 1280px — match .kpi-grid override in layout.css */
+    @media (max-width: 1280px) {
+      .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* 1024px — laptop */
+    @media (max-width: 1024px) {
+      .profile-page {
+        max-width: 100%;
+      }
+    }
+
+    /* 768px — tablet */
+    @media (max-width: 768px) {
+      /* Hero: stack vertically, centre */
+      .profile-hero {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: var(--space-4);
+      }
+
+      .profile-hero__badges {
+        justify-content: center;
+      }
+
+      /* Tabs: scroll horizontally on small screens */
+      #profile-tabs {
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      #profile-tabs::-webkit-scrollbar { display: none; }
+
+      /* Form: collapse to single column */
+      .profile-form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      /* KPI stays 2-col (matching layout.css at 768) */
+      .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-3);
+      }
+
+      /* Password form: full width */
+      .pass-form-inner {
+        max-width: 100%;
+      }
+
+      /* Danger zone: stack */
+      .danger-zone-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      /* Linked account: wrap on small screens */
+      .linked-account-row {
+        flex-wrap: wrap;
+      }
+    }
+
+    /* 480px — mobile */
+    @media (max-width: 480px) {
+      /* KPI: 2-col tight (matching layout.css) */
+      .kpi-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-3);
+      }
+
+      /* Card padding tighter */
+      .card { padding: var(--space-4); }
+
+      /* Form actions: full width stacked buttons */
+      .profile-form-actions {
+        flex-direction: column-reverse;
+      }
+      .profile-form-actions .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      /* Security: delete button full width */
+      .danger-zone-row .btn-danger {
+        width: 100%;
+        justify-content: center;
+      }
+
+      /* Avatar modal: slightly tighter */
+      #avatar-modal .modal {
+        margin: var(--space-4);
+      }
+
+      /* Tab labels shrink on very small screens */
+      .tab {
+        padding: var(--space-3) var(--space-3);
+        font-size: var(--text-xs);
+      }
+    }
+  </style>
+</head>
+
+<body>
+<!-- Skip to content -->
+<a href="#tab-panel-info" class="skip-link">Skip to content</a>
+
 <!--
-  profile.html — Page Fragment for Module 5.0: Profile
-  Injected into #page-content by router.js
-  ProfileModule.init() is called after injection
+  ================================================================
+  #page-content
+  ProfileModule.init() → renderShell() → innerHTML of this div.
+  Static skeleton below is replaced by JS on load.
+  All IDs, data-tab values, aria attributes match profile.js exactly.
+  ================================================================
 -->
+<div id="page-content">
+  <div class="profile-page">
 
-<div style="max-width:860px; margin-inline:auto;">
-
-  <!-- ══════════════════════════════════════
-       Hero Card — avatar, name, stats
-  ══════════════════════════════════════ -->
-  <div class="card profile-hero" id="profile-hero" style="margin-bottom:var(--space-5);">
-    <!-- JS replaces this with renderHero(profile) -->
-    <div style="display:flex; align-items:flex-start; gap:var(--space-6); flex-wrap:wrap;">
-
-      <!-- Avatar skeleton -->
-      <div style="position:relative; flex-shrink:0;">
-        <div class="skeleton" style="width:88px; height:88px; border-radius:9999px;"></div>
-      </div>
-
-      <!-- Info skeleton -->
-      <div style="flex:1; min-width:200px;">
-        <div class="skeleton skeleton-heading" style="width:55%; margin-bottom:var(--space-2);"></div>
-        <div class="skeleton skeleton-text"    style="width:40%; margin-bottom:var(--space-4);"></div>
-        <div style="display:flex; gap:var(--space-2);">
-          <div class="skeleton" style="width:90px; height:24px; border-radius:var(--radius-full);"></div>
-          <div class="skeleton" style="width:70px; height:24px; border-radius:var(--radius-full);"></div>
+    <!-- ════════════════════════════════════════════════════
+         HERO CARD
+         JS: document.getElementById('profile-hero').innerHTML = renderHero(p)
+         renderHero() injects:
+           .avatar.avatar-xl#hero-avatar
+           label[for="avatar-file-input"] (camera btn)
+           input#avatar-file-input (hidden file picker)
+           bindAvatarInput() wires change → #avatar-modal
+    ════════════════════════════════════════════════════════ -->
+    <div class="card" id="profile-hero" style="margin-bottom:var(--space-5);">
+      <!-- Skeleton — replaced by renderHero(p) -->
+      <div class="profile-hero" aria-hidden="true">
+        <div class="profile-hero__avatar-wrap">
+          <div class="skeleton"
+               style="width:88px;height:88px;border-radius:9999px;"></div>
+        </div>
+        <div class="profile-hero__info">
+          <div class="skeleton skeleton-heading"
+               style="width:55%;margin-bottom:var(--space-2);"></div>
+          <div class="skeleton skeleton-text"
+               style="width:40%;"></div>
+          <div class="profile-hero__badges">
+            <div class="skeleton"
+                 style="width:90px;height:24px;border-radius:9999px;"></div>
+            <div class="skeleton"
+                 style="width:70px;height:24px;border-radius:9999px;"></div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
+
+    <!-- ════════════════════════════════════════════════════
+         TAB STRIP
+         bindTabs() queries [data-tab] buttons.
+         click → shows matching #tab-panel-{tab},
+                 hides others, toggles .active class.
+    ════════════════════════════════════════════════════════ -->
+    <div class="tabs"
+         role="tablist"
+         id="profile-tabs"
+         aria-label="Profile sections">
+      <button class="tab active"
+              role="tab"
+              aria-selected="true"
+              data-tab="info"
+              id="tab-info"
+              aria-controls="tab-panel-info">Personal Info</button>
+
+      <button class="tab"
+              role="tab"
+              aria-selected="false"
+              data-tab="stats"
+              id="tab-stats"
+              aria-controls="tab-panel-stats">Ride Stats</button>
+
+      <button class="tab"
+              role="tab"
+              aria-selected="false"
+              data-tab="payments"
+              id="tab-payments"
+              aria-controls="tab-panel-payments">Payments</button>
+
+      <button class="tab"
+              role="tab"
+              aria-selected="false"
+              data-tab="security"
+              id="tab-security"
+              aria-controls="tab-panel-security">Security</button>
+    </div>
 
 
-  <!-- ══════════════════════════════════════
-       Tab Strip
-  ══════════════════════════════════════ -->
-  <div class="tabs" role="tablist" id="profile-tabs" aria-label="Profile sections">
-    <button class="tab active"
-            role="tab" aria-selected="true"
-            data-tab="info"     id="tab-info"
-            aria-controls="tab-panel-info">Personal Info</button>
-    <button class="tab"
-            role="tab" aria-selected="false"
-            data-tab="stats"    id="tab-stats"
-            aria-controls="tab-panel-stats">Ride Stats</button>
-    <button class="tab"
-            role="tab" aria-selected="false"
-            data-tab="payments" id="tab-payments"
-            aria-controls="tab-panel-payments">Payments</button>
-    <button class="tab"
-            role="tab" aria-selected="false"
-            data-tab="security" id="tab-security"
-            aria-controls="tab-panel-security">Security</button>
-  </div>
+    <!-- ════════════════════════════════════════════════════
+         PANEL — PERSONAL INFO
+         renderInfoPanel(p) sets innerHTML here.
+         bindInfoPanel() wires:
+           #edit-toggle-btn  → enable fields, show #profile-form-actions
+           #cancel-edit-btn  → disable fields, hide actions, restore values
+           #profile-form     → submit → PUT /api/users/me
+           Field IDs: #pf-name #pf-email #pf-phone #pf-city #pf-style #pf-exp #pf-bio
+    ════════════════════════════════════════════════════════ -->
+    <div id="tab-panel-info"
+         role="tabpanel"
+         aria-labelledby="tab-info">
+
+      <!-- Skeleton (replaced by renderInfoPanel) -->
+      <div class="card" style="margin-top:var(--space-5);" aria-hidden="true">
+        <div class="card-header">
+          <div class="skeleton skeleton-heading" style="width:42%;"></div>
+          <div class="skeleton"
+               style="width:64px;height:32px;border-radius:var(--radius-sm);"></div>
+        </div>
+        <div class="profile-form-grid" style="margin-top:var(--space-3);">
+          <div class="form-group">
+            <div class="skeleton skeleton-text" style="width:45%;"></div>
+            <div class="skeleton"
+                 style="height:44px;border-radius:var(--radius-md);"></div>
+          </div>
+          <div class="form-group">
+            <div class="skeleton skeleton-text" style="width:35%;"></div>
+            <div class="skeleton"
+                 style="height:44px;border-radius:var(--radius-md);"></div>
+          </div>
+          <div class="form-group">
+            <div class="skeleton skeleton-text" style="width:30%;"></div>
+            <div class="skeleton"
+                 style="height:44px;border-radius:var(--radius-md);"></div>
+          </div>
+          <div class="form-group">
+            <div class="skeleton skeleton-text" style="width:25%;"></div>
+            <div class="skeleton"
+                 style="height:44px;border-radius:var(--radius-md);"></div>
+          </div>
+          <div class="form-group">
+            <div class="skeleton skeleton-text" style="width:38%;"></div>
+            <div class="skeleton"
+                 style="height:44px;border-radius:var(--radius-md);"></div>
+          </div>
+          <div class="form-group">
+            <div class="skeleton skeleton-text" style="width:42%;"></div>
+            <div class="skeleton"
+                 style="height:44px;border-radius:var(--radius-md);"></div>
+          </div>
+          <div class="form-group full-col">
+            <div class="skeleton skeleton-text" style="width:18%;"></div>
+            <div class="skeleton"
+                 style="height:90px;border-radius:var(--radius-md);"></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /#tab-panel-info -->
 
 
-  <!-- ══════════════════════════════════════
-       Personal Info Panel
-  ══════════════════════════════════════ -->
-  <div id="tab-panel-info"
-       role="tabpanel"
-       aria-labelledby="tab-info">
+    <!-- ════════════════════════════════════════════════════
+         PANEL — RIDE STATS
+         renderStatsPanel(s) sets innerHTML here.
+         Lazy: rendered on first click of #tab-stats.
+         Fetches GET /api/trips/me/stats → 6 .kpi-card items.
+    ════════════════════════════════════════════════════════ -->
+    <div id="tab-panel-stats"
+         role="tabpanel"
+         aria-labelledby="tab-stats"
+         style="display:none;">
 
-    <div class="card" style="margin-top:var(--space-5);">
-      <div class="card-header">
-        <h2 class="card-title">Personal Information</h2>
-        <button class="btn btn-outline btn-sm" id="edit-toggle-btn" type="button">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      <!-- Skeleton -->
+      <div class="kpi-grid" aria-hidden="true">
+        <div class="card kpi-card">
+          <div class="skeleton skeleton-text" style="width:60%;"></div>
+          <div class="skeleton skeleton-heading"
+               style="width:40%;margin-top:var(--space-2);"></div>
+        </div>
+        <div class="card kpi-card">
+          <div class="skeleton skeleton-text" style="width:55%;"></div>
+          <div class="skeleton skeleton-heading"
+               style="width:45%;margin-top:var(--space-2);"></div>
+        </div>
+        <div class="card kpi-card">
+          <div class="skeleton skeleton-text" style="width:50%;"></div>
+          <div class="skeleton skeleton-heading"
+               style="width:35%;margin-top:var(--space-2);"></div>
+        </div>
+        <div class="card kpi-card">
+          <div class="skeleton skeleton-text" style="width:65%;"></div>
+          <div class="skeleton skeleton-heading"
+               style="width:40%;margin-top:var(--space-2);"></div>
+        </div>
+        <div class="card kpi-card">
+          <div class="skeleton skeleton-text" style="width:55%;"></div>
+          <div class="skeleton skeleton-heading"
+               style="width:30%;margin-top:var(--space-2);"></div>
+        </div>
+        <div class="card kpi-card">
+          <div class="skeleton skeleton-text" style="width:60%;"></div>
+          <div class="skeleton skeleton-heading"
+               style="width:50%;margin-top:var(--space-2);"></div>
+        </div>
+      </div>
+
+    </div><!-- /#tab-panel-stats -->
+
+
+    <!-- ════════════════════════════════════════════════════
+         PANEL — PAYMENTS
+         renderPaymentsPanel(payments) sets innerHTML here.
+         Lazy: rendered on first click of #tab-payments.
+         Fetches GET /api/users/me/payments → .data-table rows.
+    ════════════════════════════════════════════════════════ -->
+    <div id="tab-panel-payments"
+         role="tabpanel"
+         aria-labelledby="tab-payments"
+         style="display:none;">
+
+      <!-- Skeleton -->
+      <div class="card"
+           style="margin-top:var(--space-5);padding:0;overflow:hidden;"
+           aria-hidden="true">
+        <div style="padding:var(--space-5) var(--space-6);">
+          <div class="skeleton skeleton-heading" style="width:35%;"></div>
+        </div>
+        <div style="padding:0 var(--space-6) var(--space-6);
+                    display:flex;flex-direction:column;gap:var(--space-3);">
+          <div class="skeleton skeleton-text"></div>
+          <div class="skeleton skeleton-text"></div>
+          <div class="skeleton skeleton-text" style="width:75%;"></div>
+          <div class="skeleton skeleton-text" style="width:80%;"></div>
+          <div class="skeleton skeleton-text" style="width:60%;"></div>
+        </div>
+      </div>
+
+    </div><!-- /#tab-panel-payments -->
+
+
+    <!-- ════════════════════════════════════════════════════
+         PANEL — SECURITY
+         renderSecurityPanel() sets innerHTML here.
+         bindSecurityPanel() wires:
+           #password-form        → submit → POST /api/users/me/password
+           #new-pass             → input  → strength bar update
+           .pass-toggle-btn      → click  → toggle password visibility
+           #delete-account-btn   → click  → confirm → DELETE /api/users/me
+    ════════════════════════════════════════════════════════ -->
+    <div id="tab-panel-security"
+         role="tabpanel"
+         aria-labelledby="tab-security"
+         style="display:none;">
+
+      <!-- Skeleton -->
+      <div class="security-section" aria-hidden="true">
+        <!-- Change password card skeleton -->
+        <div class="card">
+          <div class="skeleton skeleton-heading"
+               style="width:42%;margin-bottom:var(--space-4);"></div>
+          <div class="pass-form-inner">
+            <div class="form-group">
+              <div class="skeleton skeleton-text" style="width:40%;"></div>
+              <div class="skeleton"
+                   style="height:44px;border-radius:var(--radius-md);"></div>
+            </div>
+            <div class="form-group">
+              <div class="skeleton skeleton-text" style="width:35%;"></div>
+              <div class="skeleton"
+                   style="height:44px;border-radius:var(--radius-md);"></div>
+            </div>
+            <div class="form-group">
+              <div class="skeleton skeleton-text" style="width:45%;"></div>
+              <div class="skeleton"
+                   style="height:44px;border-radius:var(--radius-md);"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Danger zone skeleton -->
+        <div class="card">
+          <div class="skeleton skeleton-heading" style="width:30%;"></div>
+          <div style="margin-top:var(--space-4);display:flex;gap:var(--space-4);align-items:center;">
+            <div style="flex:1;">
+              <div class="skeleton skeleton-text" style="width:50%;"></div>
+              <div class="skeleton skeleton-text"
+                   style="width:70%;margin-top:var(--space-1);"></div>
+            </div>
+            <div class="skeleton"
+                 style="width:120px;height:36px;border-radius:var(--radius-sm);"></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /#tab-panel-security -->
+
+  </div><!-- /.profile-page -->
+
+
+  <!-- ════════════════════════════════════════════════════════
+       AVATAR UPLOAD MODAL
+       IDs matched to profile.js bindAvatarInput() exactly:
+         #avatar-modal        .modal-backdrop → add class 'open' to show
+         #avatar-modal-title  aria-labelledby target
+         #avatar-modal-close  click → remove 'open'
+         #avatar-preview      <img> src = FileReader dataURL
+         #avatar-cancel       click → close, clear avatarDataUrl
+         #avatar-confirm      click → POST /api/users/me/avatar (multipart)
+  ════════════════════════════════════════════════════════════ -->
+  <div class="modal-backdrop"
+       id="avatar-modal"
+       role="dialog"
+       aria-modal="true"
+       aria-labelledby="avatar-modal-title">
+    <div class="modal" style="max-width:420px;">
+
+      <div class="modal-header">
+        <h2 class="modal-title" id="avatar-modal-title">Update Photo</h2>
+        <button class="modal-close btn btn-ghost btn-icon"
+                id="avatar-modal-close"
+                type="button"
+                aria-label="Close modal">
+          <svg width="18" height="18" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2"
+               aria-hidden="true">
+            <line x1="18" y1="6"  x2="6"  y2="18"/>
+            <line x1="6"  y1="6"  x2="18" y2="18"/>
           </svg>
-          Edit
         </button>
       </div>
 
-      <form id="profile-form" novalidate>
-        <div class="profile-form-grid">
-
-          <div class="form-group">
-            <label class="form-label required" for="pf-name">Full Name</label>
-            <input type="text"  id="pf-name"  class="form-control" value="" placeholder="Your name"  disabled required autocomplete="name" />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label required" for="pf-email">Email Address</label>
-            <input type="email" id="pf-email" class="form-control" value="" placeholder="you@example.com" disabled required autocomplete="email" />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="pf-phone">Phone Number</label>
-            <input type="tel"  id="pf-phone" class="form-control" value="" placeholder="+91 98765 43210" disabled autocomplete="tel" />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="pf-city">City</label>
-            <input type="text" id="pf-city"  class="form-control" value="" placeholder="e.g. Kolkata" disabled autocomplete="address-level2" />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="pf-style">Riding Style</label>
-            <select id="pf-style" class="form-control" disabled>
-              <option value="">Select style…</option>
-              <option value="Mountain">Mountain</option>
-              <option value="Road">Road</option>
-              <option value="BMX">BMX</option>
-              <option value="Touring">Touring</option>
-              <option value="Commuter">Commuter</option>
-              <option value="Gravel">Gravel</option>
-              <option value="Electric">Electric</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="pf-exp">Experience Level</label>
-            <select id="pf-exp" class="form-control" disabled>
-              <option value="">Select level…</option>
-              <option value="Beginner">Beginner</option>
-              <option value="Intermediate">Intermediate</option>
-              <option value="Advanced">Advanced</option>
-              <option value="Pro">Pro</option>
-            </select>
-          </div>
-
-          <div class="form-group" style="grid-column:1 / -1;">
-            <label class="form-label" for="pf-bio">Bio</label>
-            <textarea id="pf-bio" class="form-control"
-                      rows="3"
-                      placeholder="Tell the community about yourself, your favourite routes, gear…"
-                      disabled maxlength="500"></textarea>
-            <div style="display:flex; justify-content:flex-end; margin-top:var(--space-1);">
-              <span id="bio-char"
-                    style="font-size:var(--text-xs); color:var(--color-text-faint);"
-                    aria-live="polite">0 / 500</span>
-            </div>
-          </div>
-
-        </div>
-        <!-- /profile-form-grid -->
-
-        <!-- Form actions — hidden in view mode -->
-        <div id="profile-form-actions"
-             style="display:none; margin-top:var(--space-5);">
-          <div style="display:flex; justify-content:flex-end; gap:var(--space-3);">
-            <button type="button" class="btn btn-ghost" id="cancel-edit-btn">Cancel</button>
-            <button type="submit" class="btn btn-primary" id="save-profile-btn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                   stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                <polyline points="17 21 17 13 7 13 7 21"/>
-                <polyline points="7 3 7 8 15 8"/>
-              </svg>
-              Save Changes
-            </button>
-          </div>
-        </div>
-
-      </form>
-    </div>
-    <!-- /card -->
-
-  </div>
-  <!-- /tab-panel-info -->
-
-
-  <!-- ══════════════════════════════════════
-       Ride Stats Panel
-  ══════════════════════════════════════ -->
-  <div id="tab-panel-stats"
-       role="tabpanel"
-       aria-labelledby="tab-stats"
-       style="display:none;">
-
-    <!-- KPI grid skeleton — replaced by ProfileModule -->
-    <div class="kpi-grid" style="margin-top:var(--space-5);" aria-hidden="true">
-      <div class="card kpi-card">
-        <div class="skeleton skeleton-text" style="width:60%;"></div>
-        <div class="skeleton skeleton-heading" style="width:40%; margin-top:var(--space-2);"></div>
+      <div class="modal-body" style="text-align:center;">
+        <img id="avatar-preview"
+             src=""
+             alt="New profile photo preview"
+             width="120"
+             height="120"
+             loading="lazy"
+             style="width:120px;height:120px;border-radius:9999px;
+                    object-fit:cover;
+                    border:3px solid var(--color-primary);
+                    margin:0 auto var(--space-4);
+                    display:block;
+                    background:var(--color-surface-offset);" />
+        <p style="font-size:var(--text-sm);color:var(--color-text-muted);
+                  max-width:28ch;margin-inline:auto;">
+          This photo will be visible to other riders.
+        </p>
       </div>
-      <div class="card kpi-card">
-        <div class="skeleton skeleton-text" style="width:55%;"></div>
-        <div class="skeleton skeleton-heading" style="width:45%; margin-top:var(--space-2);"></div>
-      </div>
-      <div class="card kpi-card">
-        <div class="skeleton skeleton-text" style="width:50%;"></div>
-        <div class="skeleton skeleton-heading" style="width:35%; margin-top:var(--space-2);"></div>
-      </div>
-      <div class="card kpi-card">
-        <div class="skeleton skeleton-text" style="width:65%;"></div>
-        <div class="skeleton skeleton-heading" style="width:40%; margin-top:var(--space-2);"></div>
-      </div>
-      <div class="card kpi-card">
-        <div class="skeleton skeleton-text" style="width:55%;"></div>
-        <div class="skeleton skeleton-heading" style="width:30%; margin-top:var(--space-2);"></div>
-      </div>
-      <div class="card kpi-card">
-        <div class="skeleton skeleton-text" style="width:60%;"></div>
-        <div class="skeleton skeleton-heading" style="width:50%; margin-top:var(--space-2);"></div>
-      </div>
-    </div>
 
-  </div>
-  <!-- /tab-panel-stats -->
-
-
-  <!-- ══════════════════════════════════════
-       Payments Panel
-  ══════════════════════════════════════ -->
-  <div id="tab-panel-payments"
-       role="tabpanel"
-       aria-labelledby="tab-payments"
-       style="display:none;">
-
-    <!-- Skeleton card -->
-    <div class="card" style="margin-top:var(--space-5);" aria-hidden="true">
-      <div class="card-header">
-        <div class="skeleton skeleton-heading" style="width:40%;"></div>
-      </div>
-      <div style="margin-top:var(--space-4);">
-        <div class="skeleton skeleton-text"></div>
-        <div class="skeleton skeleton-text"></div>
-        <div class="skeleton skeleton-text" style="width:70%;"></div>
-        <div class="skeleton skeleton-text" style="width:80%;"></div>
-      </div>
-    </div>
-
-  </div>
-  <!-- /tab-panel-payments -->
-
-
-  <!-- ══════════════════════════════════════
-       Security Panel
-  ══════════════════════════════════════ -->
-  <div id="tab-panel-security"
-       role="tabpanel"
-       aria-labelledby="tab-security"
-       style="display:none;">
-
-    <!-- Change Password -->
-    <div class="card" style="margin-top:var(--space-5);">
-      <div class="card-header">
-        <h2 class="card-title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2" aria-hidden="true"
-               style="display:inline; vertical-align:middle; margin-right:var(--space-1);">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      <div class="modal-footer">
+        <button class="btn btn-ghost"
+                id="avatar-cancel"
+                type="button">Cancel</button>
+        <button class="btn btn-primary"
+                id="avatar-confirm"
+                type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2"
+               aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
           </svg>
-          Change Password
-        </h2>
-      </div>
-
-      <form id="password-form" novalidate style="max-width:480px; margin-top:var(--space-4);">
-        <div style="display:flex; flex-direction:column; gap:var(--space-4);">
-
-          <div class="form-group">
-            <label class="form-label required" for="cur-pass">Current Password</label>
-            <div class="input-group">
-              <input type="password" id="cur-pass" class="form-control"
-                     placeholder="••••••••" required
-                     autocomplete="current-password"
-                     style="padding-right:var(--space-10);" />
-              <button type="button" class="input-icon input-icon-right pass-toggle-btn"
-                      data-target="cur-pass"
-                      aria-label="Show current password">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label required" for="new-pass">New Password</label>
-            <div class="input-group">
-              <input type="password" id="new-pass" class="form-control"
-                     placeholder="Min. 8 characters" required minlength="8"
-                     autocomplete="new-password"
-                     style="padding-right:var(--space-10);" />
-              <button type="button" class="input-icon input-icon-right pass-toggle-btn"
-                      data-target="new-pass"
-                      aria-label="Show new password">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-              </button>
-            </div>
-            <!-- Password strength bar -->
-            <div id="pass-strength-bar"
-                 style="margin-top:var(--space-2); height:4px; border-radius:2px; background:var(--color-divider); overflow:hidden;">
-              <div id="pass-strength-fill"
-                   style="height:100%; width:0%; border-radius:2px; transition:width .3s ease, background .3s ease;"></div>
-            </div>
-            <div id="pass-strength-label"
-                 style="font-size:var(--text-xs); color:var(--color-text-muted); margin-top:4px;"
-                 aria-live="polite"></div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label required" for="conf-pass">Confirm New Password</label>
-            <div class="input-group">
-              <input type="password" id="conf-pass" class="form-control"
-                     placeholder="Repeat new password" required
-                     autocomplete="new-password"
-                     style="padding-right:var(--space-10);" />
-              <button type="button" class="input-icon input-icon-right pass-toggle-btn"
-                      data-target="conf-pass"
-                      aria-label="Show confirm password">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <!-- Alert -->
-          <div id="pass-alert" class="alert alert-error" style="display:none;" role="alert">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="8"  x2="12" y2="12"/>
-              <line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-            <span id="pass-alert-msg"></span>
-          </div>
-
-          <div>
-            <button type="submit" class="btn btn-primary" id="change-pass-btn">
-              Update Password
-            </button>
-          </div>
-
-        </div>
-      </form>
-    </div>
-    <!-- /change-password card -->
-
-    <!-- Linked accounts (informational) -->
-    <div class="card" style="margin-top:var(--space-5);">
-      <div class="card-header">
-        <h2 class="card-title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2" aria-hidden="true"
-               style="display:inline; vertical-align:middle; margin-right:var(--space-1);">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-          </svg>
-          Linked Accounts
-        </h2>
-      </div>
-      <div style="display:flex; flex-direction:column; gap:var(--space-3); margin-top:var(--space-4);">
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:var(--space-3) var(--space-4); background:var(--color-surface-offset); border-radius:var(--radius-md);">
-          <div style="display:flex; align-items:center; gap:var(--space-3);">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8.56 2.75c4.37 6.03 6.02 9.42 8.03 17.72m2.54-15.38c-3.72 4.35-8.94 5.66-16.88 5.85m19.5 1.9c-3.5-.93-6.63-.82-8.94 0-2.58.92-5.01 2.86-7.44 6.32"/></svg>
-            <div>
-              <div style="font-size:var(--text-sm); font-weight:600;">Google</div>
-              <div style="font-size:var(--text-xs); color:var(--color-text-muted);">Not connected</div>
-            </div>
-          </div>
-          <button class="btn btn-outline btn-sm" type="button">Connect</button>
-        </div>
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:var(--space-3) var(--space-4); background:var(--color-surface-offset); border-radius:var(--radius-md);">
-          <div style="display:flex; align-items:center; gap:var(--space-3);">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
-            <div>
-              <div style="font-size:var(--text-sm); font-weight:600;">GitHub</div>
-              <div style="font-size:var(--text-xs); color:var(--color-text-muted);">Not connected</div>
-            </div>
-          </div>
-          <button class="btn btn-outline btn-sm" type="button">Connect</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Danger Zone -->
-    <div class="card danger-zone" style="margin-top:var(--space-5);">
-      <div class="card-header">
-        <h2 class="card-title" style="color:var(--color-error);">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2" aria-hidden="true"
-               style="display:inline; vertical-align:middle; margin-right:var(--space-1);">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-            <line x1="12" y1="9" x2="12" y2="13"/>
-            <line x1="12" y1="17" x2="12.01" y2="17"/>
-          </svg>
-          Danger Zone
-        </h2>
-      </div>
-
-      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--space-4); margin-top:var(--space-4);">
-        <div>
-          <div style="font-size:var(--text-sm); font-weight:600;">Delete Account</div>
-          <div style="font-size:var(--text-xs); color:var(--color-text-muted); margin-top:2px; max-width:40ch;">
-            Permanently delete your account and all associated data. This action cannot be undone.
-          </div>
-        </div>
-        <button class="btn btn-danger btn-sm" id="delete-account-btn" type="button">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <polyline points="3 6 5 6 21 6"/>
-            <path d="M19 6l-1 14H6L5 6"/>
-            <path d="M10 11v6"/><path d="M14 11v6"/>
-            <path d="M9 6V4h6v2"/>
-          </svg>
-          Delete Account
+          Save Photo
         </button>
       </div>
+
     </div>
-    <!-- /danger-zone -->
+  </div><!-- /#avatar-modal -->
 
-  </div>
-  <!-- /tab-panel-security -->
-
-</div>
-<!-- /outer container -->
+</div><!-- /#page-content -->
 
 
-<!-- ══════════════════════════════════════
-     Avatar Upload Modal
-══════════════════════════════════════ -->
-<div class="modal-backdrop"
-     id="avatar-modal"
-     role="dialog"
-     aria-modal="true"
-     aria-labelledby="avatar-modal-title">
-  <div class="modal" style="max-width:420px;">
+<!-- ════════════════════════════════════════════════════════
+     SCRIPTS
+     Load order: api → auth → state → utils → profile
+     ProfileModule.init() is called by router.js when hash = #profile.
+     The guard below prevents double-init when opened as standalone.
+════════════════════════════════════════════════════════════ -->
+<script src="../assets/js/api.js"             defer></script>
+<script src="../assets/js/auth.js"            defer></script>
+<script src="../assets/js/state.js"           defer></script>
+<script src="../assets/js/utils.js"           defer></script>
+<script src="../assets/js/modules/profile.js" defer></script>
 
-    <div class="modal-header">
-      <h2 class="modal-title" id="avatar-modal-title">Update Profile Photo</h2>
-      <button class="modal-close btn btn-ghost btn-icon"
-              id="avatar-modal-close"
-              aria-label="Close" type="button">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <line x1="18" y1="6"  x2="6"  y2="18"/>
-          <line x1="6"  y1="6"  x2="18" y2="18"/>
-        </svg>
-      </button>
-    </div>
+<script defer>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.__routerActive) return;
+    if (window.ProfileModule && typeof ProfileModule.init === 'function') {
+      ProfileModule.init();
+    }
+  });
+</script>
 
-    <div class="modal-body" style="text-align:center;">
-      <img id="avatar-preview"
-           src=""
-           alt="New profile photo preview"
-           width="120" height="120"
-           style="width:120px; height:120px; border-radius:9999px;
-                  object-fit:cover; border:3px solid var(--color-primary);
-                  margin:0 auto var(--space-4); display:block;
-                  background:var(--color-surface-offset);" />
-      <p style="font-size:var(--text-sm); color:var(--color-text-muted); max-width:28ch; margin-inline:auto;">
-        This photo will be visible to other riders in the community.
-      </p>
-    </div>
-
-    <div class="modal-footer">
-      <button class="btn btn-ghost"   id="avatar-cancel"  type="button">Cancel</button>
-      <button class="btn btn-primary" id="avatar-confirm" type="button">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="17 8 12 3 7 8"/>
-          <line x1="12" y1="3" x2="12" y2="15"/>
-        </svg>
-        Save Photo
-      </button>
-    </div>
-
-  </div>
-</div>
-<!-- /avatar-modal -->
-
-<!-- Hidden avatar file input — triggered from hero edit button -->
-<input type="file"
-       id="avatar-file-input"
-       accept="image/*"
-       style="display:none;"
-       aria-hidden="true"
-       tabindex="-1" />
+</body>
+</html>
