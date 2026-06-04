@@ -26,7 +26,7 @@ public class RecommendationController {
     public ResponseEntity<List<RecommendationResultDTO>> recommend(
             @Valid @RequestBody RecommendationRequest req,
             @AuthenticationPrincipal UserDetails userDetails) {
-        Long authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
+        String authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
         return ResponseEntity.ok(recommendationService.getRecommendations(req, authUserId));
     }
 }

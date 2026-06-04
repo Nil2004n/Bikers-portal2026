@@ -46,7 +46,7 @@ public class RecommendationService {
     }
 
     @Transactional
-    public List<RecommendationResultDTO> getRecommendations(RecommendationRequest req, Long authUserId) {
+    public List<RecommendationResultDTO> getRecommendations(RecommendationRequest req, String authUserId) {
         List<Bike> allBikes = bikeRepository.findAll();
         if (allBikes.isEmpty()) {
             return List.of();
@@ -91,7 +91,6 @@ public class RecommendationService {
             results = fallbackRecommendations(allBikes, req);
         }
 
-        // Persist the request + raw AI response
         try {
             User user = userRepository.findById(authUserId).orElse(null);
             Recommendation rec = Recommendation.builder()
@@ -119,7 +118,7 @@ public class RecommendationService {
         List<RecommendationResultDTO> out = new ArrayList<>();
         for (Map<String, Object> item : rawList) {
             RecommendationResultDTO dto = RecommendationResultDTO.builder()
-                    .bikeId(asLong(item.get("bikeId")))
+                    .bikeId(asString(item.get("bikeId")))
                     .bikeName(asString(item.get("bikeName")))
                     .matchScore(asInt(item.get("matchScore")))
                     .explanation(asString(item.get("explanation")))
@@ -136,7 +135,7 @@ public class RecommendationService {
         return bikes.stream()
                 .sorted(Comparator.comparing(b -> {
                     BigDecimal p = b.getPricePerDay() != null ? b.getPricePerDay()
-                            : (b.getSalePrice() != null ? b.getSalePrice() : BigDecimal.ZERO);
+                            : (b.getBuyPrice() != null ? b.getBuyPrice() : BigDecimal.ZERO);
                     return p.subtract(budget).abs();
                 }))
                 .limit(3)
@@ -147,7 +146,7 @@ public class RecommendationService {
                         .explanation("Recommended based on your budget.")
                         .priceRange(b.getPricePerDay() != null
                                 ? "INR " + b.getPricePerDay() + "/day"
-                                : (b.getSalePrice() != null ? "INR " + b.getSalePrice() : "Contact"))
+                                : (b.getBuyPrice() != null ? "INR " + b.getBuyPrice() : "Contact"))
                         .type(b.getType())
                         .build())
                 .toList();
@@ -174,7 +173,7 @@ public class RecommendationService {
                 m.put("bikeName", b.getName());
                 m.put("type", b.getType() != null ? b.getType().name() : null);
                 m.put("pricePerDay", b.getPricePerDay());
-                m.put("salePrice", b.getSalePrice());
+                m.put("buyPrice", b.getBuyPrice());
                 m.put("description", b.getDescription());
                 arr.add(m);
             }
@@ -197,16 +196,6 @@ public class RecommendationService {
             s = s.substring(4).trim();
         }
         return s;
-    }
-
-    private Long asLong(Object o) {
-        if (o == null) return null;
-        if (o instanceof Number n) return n.longValue();
-        try {
-            return Long.parseLong(o.toString());
-        } catch (NumberFormatException ex) {
-            return null;
-        }
     }
 
     private int asInt(Object o) {

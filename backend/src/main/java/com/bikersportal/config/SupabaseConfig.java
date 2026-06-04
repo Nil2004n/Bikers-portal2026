@@ -1,46 +1,50 @@
 package com.bikersportal.config;
 
-import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-
-import javax.sql.DataSource;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
+import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
 public class SupabaseConfig {
 
-    @Value("${spring.datasource.url}")
-    private String dbUrl;
+    @Value("${app.supabase-url}")
+    private String supabaseUrl;
 
-    @Value("${spring.datasource.username}")
-    private String dbUsername;
+    @Value("${app.supabase-service-role-key}")
+    private String serviceRoleKey;
 
-    @Value("${spring.datasource.password}")
-    private String dbPassword;
+    @Value("${app.supabase-storage-bucket}")
+    private String storageBucket;
 
-    @Value("${spring.datasource.driver-class-name:}")
-    private String driverClassName;
+    @Bean(name = "supabaseWebClient")
+    public WebClient supabaseWebClient() {
+        ExchangeStrategies strategies = ExchangeStrategies.builder()
+                .codecs(c -> c.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
+                .build();
 
-    @Bean
-    @Primary
-    public DataSource dataSource() {
-        HikariDataSource ds = new HikariDataSource();
-        ds.setJdbcUrl(dbUrl);
-        ds.setUsername(dbUsername);
-        ds.setPassword(dbPassword);
-        if (driverClassName != null && !driverClassName.isBlank()) {
-            ds.setDriverClassName(driverClassName);
-        } else if (dbUrl != null && dbUrl.startsWith("jdbc:postgresql:")) {
-            ds.setDriverClassName("org.postgresql.Driver");
-        } else if (dbUrl != null && dbUrl.startsWith("jdbc:h2:")) {
-            ds.setDriverClassName("org.h2.Driver");
-        }
-        ds.setConnectionTimeout(30000);
-        ds.setMaximumPoolSize(10);
-        ds.setMinimumIdle(2);
-        ds.setPoolName("BikersPortalHikariPool");
-        return ds;
+        return WebClient.builder()
+                .baseUrl(supabaseUrl)
+                .defaultHeader("apikey", serviceRoleKey)
+                .defaultHeader("Authorization", "Bearer " + serviceRoleKey)
+                .defaultHeader("Content-Type", "application/json")
+                .exchangeStrategies(strategies)
+                .build();
+    }
+
+    @Bean(name = "supabaseUrl")
+    public String supabaseUrl() {
+        return supabaseUrl;
+    }
+
+    @Bean(name = "serviceRoleKey")
+    public String serviceRoleKey() {
+        return serviceRoleKey;
+    }
+
+    @Bean(name = "storageBucket")
+    public String storageBucket() {
+        return storageBucket;
     }
 }

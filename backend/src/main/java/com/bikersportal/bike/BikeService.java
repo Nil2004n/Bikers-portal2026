@@ -1,8 +1,11 @@
 package com.bikersportal.bike;
 
+import com.bikersportal.feed.FeedRepository;
+import com.bikersportal.payment.PaymentRequest;
+import com.bikersportal.payment.PaymentService;
+import com.bikersportal.trip.TripRepository;
 import com.bikersportal.user.User;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
+import com.bikersportal.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -10,16 +13,9 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.bikersportal.feed.FeedRepository;
-import com.bikersportal.payment.PaymentRequest;
-import com.bikersportal.payment.PaymentService;
-import com.bikersportal.trip.TripRepository;
-import com.bikersportal.user.UserRepository;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -33,9 +29,6 @@ public class BikeService {
     private final TripRepository tripRepository;
     private final PaymentService paymentService;
 
-    @PersistenceContext
-    private EntityManager entityManager;
-
     @Transactional(readOnly = true)
     public Page<BikeDTO> getBikes(String type,
                                   String mode,
@@ -47,19 +40,16 @@ public class BikeService {
         if (type != null && !type.isBlank()) {
             spec = spec.and((root, q, cb) -> cb.equal(root.get("type"), BikeType.valueOf(type.toUpperCase())));
         }
-        if (mode != null && !mode.isBlank()) {
-            spec = spec.and((root, q, cb) -> cb.equal(root.get("mode"), BikeMode.valueOf(mode.toUpperCase())));
-        }
         if (minPrice != null) {
             spec = spec.and((root, q, cb) -> cb.or(
                     cb.greaterThanOrEqualTo(root.get("pricePerDay"), minPrice),
-                    cb.greaterThanOrEqualTo(root.get("salePrice"), minPrice)
+                    cb.greaterThanOrEqualTo(root.get("buyPrice"), minPrice)
             ));
         }
         if (maxPrice != null) {
             spec = spec.and((root, q, cb) -> cb.or(
                     cb.lessThanOrEqualTo(root.get("pricePerDay"), maxPrice),
-                    cb.lessThanOrEqualTo(root.get("salePrice"), maxPrice)
+                    cb.lessThanOrEqualTo(root.get("buyPrice"), maxPrice)
             ));
         }
 
@@ -67,13 +57,13 @@ public class BikeService {
     }
 
     @Transactional(readOnly = true)
-    public BikeDTO getBikeById(Long id) {
+    public BikeDTO getBikeById(String id) {
         Bike bike = bikeRepository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Bike not found: " + id));
         return BikeDTO.from(bike);
     }
 
-    public RentalDTO createRental(CreateRentalRequest req, Long authUserId) {
+    public RentalDTO createRental(CreateRentalRequest req, String authUserId) {
         if (req.getBikeId() == null || req.getStartDate() == null || req.getEndDate() == null) {
             throw new IllegalArgumentException("bikeId, startDate and endDate are required");
         }
@@ -112,9 +102,9 @@ public class BikeService {
         rental = rentalRepository.save(rental);
 
         bike.setStatus(BikeStatus.RENTED);
+        bike.setAvailable(false);
         bikeRepository.save(bike);
 
-        // Fire-and-forget payment initiation
         try {
             paymentService.initiatePayment(PaymentRequest.builder()
                     .userId(user.getId())
@@ -124,14 +114,13 @@ public class BikeService {
                     .type(req.isInsurance() ? "INSURANCE" : "RENTAL")
                     .build());
         } catch (Exception ignored) {
-            // never fail the rental because of payment pipeline
         }
 
         return RentalDTO.from(rental);
     }
 
     @Transactional(readOnly = true)
-    public Page<RentalDTO> getUserRentals(Long userId, Pageable pageable) {
+    public Page<RentalDTO> getUserRentals(String userId, Pageable pageable) {
         return rentalRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable).map(RentalDTO::from);
     }
 }

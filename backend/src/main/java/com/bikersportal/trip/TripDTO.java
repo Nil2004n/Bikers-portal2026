@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TripDTO {
-    private Long id;
+    private String id;
     private String name;
     private String startLocation;
     private String endLocation;

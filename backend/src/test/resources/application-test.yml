@@ -1,22 +1,30 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:bikers_test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: sa
+    url: jdbc:sqlite::memory:?cache=shared
+    driver-class-name: org.sqlite.JDBC
+    username: ""
+    password: ""
+    hikari:
+      maximum-pool-size: 1
+      connection-test-query: SELECT 1
   jpa:
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
     hibernate:
       ddl-auto: create-drop
     show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
+        temp:
+          use_jdbc_metadata_defaults: false
 
 app:
   jwt-secret: "test-secret-key-test-secret-key-test-secret-key-test-256-bit"
   jwt-expiration-ms: 3600000
   ai-service-url: http://localhost:11434
   ai-model: llama3
+  supabase-url: http://localhost:54321
+  supabase-service-role-key: local-dev-key
+  supabase-storage-bucket: bikers-portal
 
 external:
   payment-gateway-url: http://localhost:9999

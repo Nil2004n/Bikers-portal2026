@@ -14,13 +14,7 @@ public final class SecurityUtils {
     private SecurityUtils() {
     }
 
-    /**
-     * Resolve the authenticated user id. Order:
-     *   1) UserDetails is a com.bikersportal.user.User instance
-     *   2) Try to look up via UserRepository by email
-     *   3) Fall back to extracting from the Authorization header via JwtUtil
-     */
-    public static Long userIdFromPrincipal(UserDetails userDetails, UserRepository userRepository) {
+    public static String userIdFromPrincipal(UserDetails userDetails, UserRepository userRepository) {
         if (userDetails instanceof User u && u.getId() != null) {
             return u.getId();
         }
@@ -29,12 +23,10 @@ public final class SecurityUtils {
                     .map(User::getId)
                     .orElse(null);
         }
-        // fallback: parse JWT from request
-        Long id = userIdFromJwt();
-        return id;
+        return userIdFromJwt();
     }
 
-    public static Long userIdFromJwt() {
+    public static String userIdFromJwt() {
         try {
             ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
             if (attrs == null) return null;

@@ -37,10 +37,10 @@ class TripServiceTest {
 
     @BeforeEach
     void setUp() {
-        owner = User.builder().id(1L).email("o@e.com").name("Owner").build();
-        other = User.builder().id(2L).email("x@e.com").name("Other").build();
+        owner = User.builder().id("user-001").email("o@e.com").fullName("Owner").build();
+        other = User.builder().id("user-002").email("x@e.com").fullName("Other").build();
         plannedTrip = Trip.builder()
-                .id(100L)
+                .id("trip-100")
                 .user(owner)
                 .name("Mumbai -> Pune")
                 .startLocation("Mumbai")
@@ -51,10 +51,10 @@ class TripServiceTest {
 
     @Test
     void createTrip_success() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(owner));
+        when(userRepository.findById("user-001")).thenReturn(Optional.of(owner));
         when(tripRepository.save(any(Trip.class))).thenAnswer(inv -> {
             Trip t = inv.getArgument(0);
-            t.setId(200L);
+            t.setId("trip-200");
             return t;
         });
 
@@ -64,36 +64,36 @@ class TripServiceTest {
                 .endLocation("B")
                 .build();
 
-        TripDTO result = tripService.createTrip(req, 1L);
-        assertThat(result.getId()).isEqualTo(200L);
+        TripDTO result = tripService.createTrip(req, "user-001");
+        assertThat(result.getId()).isEqualTo("trip-200");
         assertThat(result.getStatus()).isEqualTo(TripStatus.PLANNED);
     }
 
     @Test
     void startTrip_setsStatusActive() {
-        when(tripRepository.findById(100L)).thenReturn(Optional.of(plannedTrip));
+        when(tripRepository.findById("trip-100")).thenReturn(Optional.of(plannedTrip));
         when(tripRepository.save(any(Trip.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        TripDTO result = tripService.startTrip(100L, 1L);
+        TripDTO result = tripService.startTrip("trip-100", "user-001");
         assertThat(result.getStatus()).isEqualTo(TripStatus.ACTIVE);
         assertThat(result.getStartedAt()).isNotNull();
     }
 
     @Test
     void completeTrip_setsStatusCompleted() {
-        when(tripRepository.findById(100L)).thenReturn(Optional.of(plannedTrip));
+        when(tripRepository.findById("trip-100")).thenReturn(Optional.of(plannedTrip));
         when(tripRepository.save(any(Trip.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        TripDTO result = tripService.completeTrip(100L, 1L);
+        TripDTO result = tripService.completeTrip("trip-100", "user-001");
         assertThat(result.getStatus()).isEqualTo(TripStatus.COMPLETED);
         assertThat(result.getCompletedAt()).isNotNull();
     }
 
     @Test
     void deleteTrip_notOwner_throwsAccessDenied() {
-        when(tripRepository.findById(100L)).thenReturn(Optional.of(plannedTrip));
+        when(tripRepository.findById("trip-100")).thenReturn(Optional.of(plannedTrip));
 
-        assertThatThrownBy(() -> tripService.deleteTrip(100L, 2L))
+        assertThatThrownBy(() -> tripService.deleteTrip("trip-100", "user-002"))
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(tripRepository, never()).delete(any());
@@ -103,11 +103,11 @@ class TripServiceTest {
     void getTrips_filterByStatus_returnsCorrectTrips() {
         Pageable pageable = PageRequest.of(0, 10);
         Trip activeTrip = Trip.builder()
-                .id(101L).user(owner).name("A").status(TripStatus.ACTIVE).build();
-        when(tripRepository.findByUserIdAndStatusOrderByCreatedAtDesc(1L, TripStatus.ACTIVE, pageable))
+                .id("trip-101").user(owner).name("A").status(TripStatus.ACTIVE).build();
+        when(tripRepository.findByUserIdAndStatusOrderByCreatedAtDesc("user-001", TripStatus.ACTIVE, pageable))
                 .thenReturn(new PageImpl<>(List.of(activeTrip)));
 
-        Page<TripDTO> result = tripService.getTrips(1L, "ACTIVE", pageable);
+        Page<TripDTO> result = tripService.getTrips("user-001", "ACTIVE", pageable);
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getContent().get(0).getStatus()).isEqualTo(TripStatus.ACTIVE);
     }

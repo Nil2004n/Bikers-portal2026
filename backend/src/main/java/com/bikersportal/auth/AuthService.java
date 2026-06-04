@@ -30,7 +30,7 @@ public class AuthService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getEmail())
-                .password(user.getPassword())
+                .password(user.getPasswordHash())
                 .authorities(Collections.emptyList())
                 .build();
     }
@@ -42,9 +42,12 @@ public class AuthService implements UserDetailsService {
         }
 
         User user = User.builder()
-                .name(req.getName())
+                .fullName(req.getFullName())
                 .email(req.getEmail())
-                .password(passwordEncoder.encode(req.getPassword()))
+                .passwordHash(passwordEncoder.encode(req.getPassword()))
+                .username(req.getUsername() != null ? req.getUsername() : req.getEmail().split("@")[0])
+                .role("USER")
+                .isActive(true)
                 .build();
 
         user = userRepository.save(user);

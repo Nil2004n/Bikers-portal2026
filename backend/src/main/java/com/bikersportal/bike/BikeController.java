@@ -33,7 +33,7 @@ public class BikeController {
     }
 
     @GetMapping("/bikes/{id}")
-    public ResponseEntity<BikeDTO> getBike(@PathVariable Long id) {
+    public ResponseEntity<BikeDTO> getBike(@PathVariable String id) {
         return ResponseEntity.ok(bikeService.getBikeById(id));
     }
 
@@ -41,7 +41,7 @@ public class BikeController {
     public ResponseEntity<RentalDTO> createRental(
             @Valid @RequestBody CreateRentalRequest req,
             @AuthenticationPrincipal UserDetails userDetails) {
-        Long authUserId = com.bikersportal.auth.SecurityUtils.userIdFromPrincipal(userDetails, null);
+        String authUserId = com.bikersportal.auth.SecurityUtils.userIdFromPrincipal(userDetails, null);
         RentalDTO dto = bikeService.createRental(req, authUserId);
         return ResponseEntity.status(HttpStatus.CREATED).body(dto);
     }

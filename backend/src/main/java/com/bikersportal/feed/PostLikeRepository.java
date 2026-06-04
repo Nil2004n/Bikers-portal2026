@@ -9,11 +9,11 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface PostLikeRepository extends JpaRepository<PostLike, Long> {
-    Optional<PostLike> findByPostIdAndUserId(Long postId, Long userId);
+public interface PostLikeRepository extends JpaRepository<PostLike, String> {
+    Optional<PostLike> findByPostIdAndUserId(String postId, String userId);
 
-    boolean existsByPostIdAndUserId(Long postId, Long userId);
+    boolean existsByPostIdAndUserId(String postId, String userId);
 
     @Query("select pl.postId from PostLike pl where pl.userId = :userId")
-    List<Long> findPostIdsByUserId(@Param("userId") Long userId);
+    List<String> findPostIdsByUserId(@Param("userId") String userId);
 }

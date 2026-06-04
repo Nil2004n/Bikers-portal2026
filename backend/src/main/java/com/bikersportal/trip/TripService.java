@@ -20,7 +20,7 @@ public class TripService {
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
-    public Page<TripDTO> getTrips(Long authUserId, String status, Pageable pageable) {
+    public Page<TripDTO> getTrips(String authUserId, String status, Pageable pageable) {
         if (status != null && !status.isBlank()) {
             TripStatus ts;
             try {
@@ -35,7 +35,7 @@ public class TripService {
         return tripRepository.findByUserIdOrderByCreatedAtDesc(authUserId, pageable).map(TripDTO::from);
     }
 
-    public TripDTO createTrip(CreateTripRequest req, Long authUserId) {
+    public TripDTO createTrip(CreateTripRequest req, String authUserId) {
         User user = userRepository.findById(authUserId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("User not found: " + authUserId));
         Trip trip = Trip.builder()
@@ -51,7 +51,7 @@ public class TripService {
         return TripDTO.from(tripRepository.save(trip));
     }
 
-    public TripDTO startTrip(Long tripId, Long authUserId) {
+    public TripDTO startTrip(String tripId, String authUserId) {
         Trip trip = tripRepository.findById(tripId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Trip not found: " + tripId));
         assertOwner(trip, authUserId);
@@ -60,7 +60,7 @@ public class TripService {
         return TripDTO.from(tripRepository.save(trip));
     }
 
-    public TripDTO completeTrip(Long tripId, Long authUserId) {
+    public TripDTO completeTrip(String tripId, String authUserId) {
         Trip trip = tripRepository.findById(tripId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Trip not found: " + tripId));
         assertOwner(trip, authUserId);
@@ -69,14 +69,14 @@ public class TripService {
         return TripDTO.from(tripRepository.save(trip));
     }
 
-    public void deleteTrip(Long tripId, Long authUserId) {
+    public void deleteTrip(String tripId, String authUserId) {
         Trip trip = tripRepository.findById(tripId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Trip not found: " + tripId));
         assertOwner(trip, authUserId);
         tripRepository.delete(trip);
     }
 
-    private void assertOwner(Trip trip, Long authUserId) {
+    private void assertOwner(Trip trip, String authUserId) {
         if (trip.getUser() == null || !trip.getUser().getId().equals(authUserId)) {
             throw new AccessDeniedException("Not your trip");
         }

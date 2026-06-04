@@ -21,16 +21,16 @@ public class UserController {
     private final UserRepository userRepository;
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserProfileDTO> getProfile(@PathVariable Long id) {
+    public ResponseEntity<UserProfileDTO> getProfile(@PathVariable String id) {
         return ResponseEntity.ok(userService.getProfile(id));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<UserProfileDTO> updateProfile(
-            @PathVariable Long id,
+            @PathVariable String id,
             @Valid @RequestBody UpdateProfileRequest req,
             @AuthenticationPrincipal UserDetails userDetails) {
-        Long authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
+        String authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
         if (authUserId == null) {
             throw new org.springframework.security.access.AccessDeniedException("Authentication required");
         }
@@ -39,7 +39,7 @@ public class UserController {
 
     @GetMapping("/{id}/rentals")
     public ResponseEntity<Page<RentalDTO>> getUserRentals(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, Math.min(size, 100)));

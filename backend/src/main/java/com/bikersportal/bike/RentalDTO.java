@@ -1,6 +1,5 @@
 package com.bikersportal.bike;
 
-import com.bikersportal.user.User;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,7 +14,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RentalDTO {
-    private Long id;
+    private String id;
     private BikeInfo bike;
     private LocalDate startDate;
     private LocalDate endDate;
@@ -29,16 +28,18 @@ public class RentalDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class BikeInfo {
-        private Long id;
+        private String id;
         private String name;
     }
 
     public static RentalDTO from(Rental rental) {
         Bike b = rental.getBike();
-        User u = rental.getUser();
         return RentalDTO.builder()
                 .id(rental.getId())
-                .bike(BikeInfo.builder().id(b != null ? b.getId() : null).name(b != null ? b.getName() : null).build())
+                .bike(BikeInfo.builder()
+                        .id(b != null ? b.getId() : null)
+                        .name(b != null ? b.getName() : null)
+                        .build())
                 .startDate(rental.getStartDate())
                 .endDate(rental.getEndDate())
                 .insurance(rental.isInsurance())

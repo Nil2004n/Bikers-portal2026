@@ -31,9 +31,9 @@ public class FeedController {
     public ResponseEntity<Page<PostDTO>> getFeed(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int limit,
-            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String userId,
             @AuthenticationPrincipal UserDetails userDetails) {
-        Long authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
+        String authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
         return ResponseEntity.ok(feedService.getFeed(page, limit, userId, authUserId));
     }
 
@@ -41,21 +41,21 @@ public class FeedController {
     public ResponseEntity<PostDTO> createPost(
             @Valid @RequestBody CreatePostRequest req,
             @AuthenticationPrincipal UserDetails userDetails) {
-        Long authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
+        String authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
         return ResponseEntity.status(HttpStatus.CREATED).body(feedService.createPost(req, authUserId));
     }
 
     @PostMapping("/{id}/like")
     public ResponseEntity<LikeResponse> toggleLike(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal UserDetails userDetails) {
-        Long authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
+        String authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
         return ResponseEntity.ok(feedService.toggleLike(id, authUserId));
     }
 
     @GetMapping("/{id}/comments")
     public ResponseEntity<Page<CommentDTO>> getComments(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, Math.min(size, 100)));
@@ -64,19 +64,19 @@ public class FeedController {
 
     @PostMapping("/{id}/comments")
     public ResponseEntity<CommentDTO> addComment(
-            @PathVariable Long id,
+            @PathVariable String id,
             @Valid @RequestBody CommentBody body,
             @AuthenticationPrincipal UserDetails userDetails) {
-        Long authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
+        String authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(feedService.addComment(id, body.getContent(), authUserId));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePost(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal UserDetails userDetails) {
-        Long authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
+        String authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
         feedService.deletePost(id, authUserId);
         return ResponseEntity.noContent().build();
     }

@@ -51,7 +51,8 @@ class AuthControllerTest {
     @Test
     void registerSuccess() throws Exception {
         RegisterRequest req = RegisterRequest.builder()
-                .name("Alice")
+                .fullName("Alice")
+                .username("alice")
                 .email("alice@example.com")
                 .password("password123")
                 .build();
@@ -62,7 +63,7 @@ class AuthControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.token").isNotEmpty())
                 .andExpect(jsonPath("$.user.email").value("alice@example.com"))
-                .andExpect(jsonPath("$.user.name").value("Alice"));
+                .andExpect(jsonPath("$.user.fullName").value("Alice"));
 
         assertThat(userRepository.findByEmail("alice@example.com")).isPresent();
     }
@@ -70,7 +71,7 @@ class AuthControllerTest {
     @Test
     void registerDuplicateEmail() throws Exception {
         RegisterRequest req = RegisterRequest.builder()
-                .name("Bob")
+                .fullName("Bob")
                 .email("bob@example.com")
                 .password("password123")
                 .build();
@@ -89,7 +90,7 @@ class AuthControllerTest {
     @Test
     void loginSuccess() throws Exception {
         RegisterRequest reg = RegisterRequest.builder()
-                .name("Cara")
+                .fullName("Cara")
                 .email("cara@example.com")
                 .password("password123")
                 .build();
@@ -111,7 +112,7 @@ class AuthControllerTest {
     @Test
     void loginWrongPassword() throws Exception {
         RegisterRequest reg = RegisterRequest.builder()
-                .name("Dan")
+                .fullName("Dan")
                 .email("dan@example.com")
                 .password("password123")
                 .build();
@@ -144,7 +145,7 @@ class AuthControllerTest {
     @Test
     void serviceRegisterDuplicate() {
         RegisterRequest req = RegisterRequest.builder()
-                .name("Eve")
+                .fullName("Eve")
                 .email("eve@example.com")
                 .password("password123")
                 .build();
@@ -156,14 +157,14 @@ class AuthControllerTest {
     @Test
     void passwordIsHashed() {
         RegisterRequest req = RegisterRequest.builder()
-                .name("Frank")
+                .fullName("Frank")
                 .email("frank@example.com")
                 .password("plain123")
                 .build();
         authService.register(req);
 
         User saved = userRepository.findByEmail("frank@example.com").orElseThrow();
-        assertThat(saved.getPassword()).isNotEqualTo("plain123");
-        assertThat(passwordEncoder.matches("plain123", saved.getPassword())).isTrue();
+        assertThat(saved.getPasswordHash()).isNotEqualTo("plain123");
+        assertThat(passwordEncoder.matches("plain123", saved.getPasswordHash())).isTrue();
     }
 }

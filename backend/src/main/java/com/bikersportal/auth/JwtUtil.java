@@ -36,7 +36,7 @@ public class JwtUtil {
         return buildToken(claims, userDetails.getUsername());
     }
 
-    public String generateToken(Long userId, String email) {
+    public String generateToken(String userId, String email) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         return buildToken(claims, email);
@@ -56,16 +56,10 @@ public class JwtUtil {
         return extractClaim(token, Claims::getSubject);
     }
 
-    @SuppressWarnings("unchecked")
-    public Long extractUserId(String token) {
+    public String extractUserId(String token) {
         Object v = extractClaim(token, c -> c.get("userId"));
         if (v == null) return null;
-        if (v instanceof Number n) return n.longValue();
-        try {
-            return Long.parseLong(v.toString());
-        } catch (NumberFormatException ex) {
-            return null;
-        }
+        return v.toString();
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {

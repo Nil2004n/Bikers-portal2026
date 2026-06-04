@@ -1,13 +1,13 @@
 package com.bikersportal.feed;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-@Repository
-public interface CommentRepository extends JpaRepository<Comment, Long> {
-    Page<Comment> findByPostIdOrderByCreatedAtAsc(Long postId, Pageable pageable);
+import java.util.List;
 
-    long countByPostId(Long postId);
+@Repository
+public interface CommentRepository extends JpaRepository<Comment, String> {
+    org.springframework.data.domain.Page<Comment> findByPostIdOrderByCreatedAtAsc(String postId, org.springframework.data.domain.Pageable pageable);
+
+    long countByPostId(String postId);
 }

@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UpdateProfileRequest {
     @Size(min = 2, max = 100)
-    private String name;
+    private String fullName;
 
     @Size(min = 3, max = 50)
     private String username;
@@ -22,4 +22,9 @@ public class UpdateProfileRequest {
 
     @Size(max = 1000)
     private String bio;
+
+    @Size(max = 5_000_000, message = "Avatar too large")
+    private String avatarBase64;
+
+    private String avatarMimeType;
 }

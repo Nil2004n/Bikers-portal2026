@@ -15,12 +15,20 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreatePostRequest {
+    @Size(max = 500)
+    private String title;
+
     @NotBlank
     @Size(max = 1000)
     private String content;
 
     @Size(max = 1000)
     private String imageUrl;
+
+    @Size(max = 5_000_000, message = "Image too large")
+    private String imageBase64;
+
+    private String imageMimeType;
 
     @Builder.Default
     private List<String> tags = new ArrayList<>();

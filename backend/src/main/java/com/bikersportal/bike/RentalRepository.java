@@ -8,8 +8,8 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface RentalRepository extends JpaRepository<Rental, Long> {
-    Page<Rental> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
+public interface RentalRepository extends JpaRepository<Rental, String> {
+    Page<Rental> findByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
 
-    List<Rental> findByBikeIdAndStatus(Long bikeId, RentalStatus status);
+    List<Rental> findByBikeIdAndStatus(String bikeId, RentalStatus status);
 }

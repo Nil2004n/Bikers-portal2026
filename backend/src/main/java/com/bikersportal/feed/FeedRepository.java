@@ -8,16 +8,15 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Repository
-public interface FeedRepository extends JpaRepository<Post, Long> {
+public interface FeedRepository extends JpaRepository<Post, String> {
     Page<Post> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
-    Page<Post> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
+    Page<Post> findByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
 
-    long countByUserId(Long userId);
+    long countByUserId(String userId);
 
     @Query("select count(c) from Comment c where c.post.id = :postId")
-    long countCommentsByPostId(@Param("postId") Long postId);
+    long countCommentsByPostId(@Param("postId") String postId);
 }

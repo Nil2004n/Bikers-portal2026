@@ -6,6 +6,6 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface RecommendationRepository extends JpaRepository<Recommendation, Long> {
-    List<Recommendation> findByUserIdOrderByCreatedAtDesc(Long userId);
+public interface RecommendationRepository extends JpaRepository<Recommendation, String> {
+    List<Recommendation> findByUserIdOrderByCreatedAtDesc(String userId);
 }

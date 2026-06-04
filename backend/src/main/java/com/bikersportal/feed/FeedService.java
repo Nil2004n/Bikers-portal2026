@@ -1,5 +1,6 @@
 package com.bikersportal.feed;
 
+import com.bikersportal.storage.SupabaseStorageService;
 import com.bikersportal.user.User;
 import com.bikersportal.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,9 +24,10 @@ public class FeedService {
     private final CommentRepository commentRepository;
     private final PostLikeRepository postLikeRepository;
     private final UserRepository userRepository;
+    private final SupabaseStorageService storageService;
 
     @Transactional(readOnly = true)
-    public Page<PostDTO> getFeed(int page, int limit, Long filterUserId, Long authUserId) {
+    public Page<PostDTO> getFeed(int page, int limit, String filterUserId, String authUserId) {
         Pageable pageable = org.springframework.data.domain.PageRequest.of(
                 Math.max(0, page), Math.max(1, Math.min(limit, 100)));
 
@@ -33,27 +35,42 @@ public class FeedService {
                 ? feedRepository.findByUserIdOrderByCreatedAtDesc(filterUserId, pageable)
                 : feedRepository.findAllByOrderByCreatedAtDesc(pageable);
 
-        Set<Long> likedByMe = new HashSet<>(postLikeRepository.findPostIdsByUserId(authUserId));
+        Set<String> likedByMe = new HashSet<>(postLikeRepository.findPostIdsByUserId(authUserId));
 
         List<PostDTO> mapped = posts.stream().map(p -> toDto(p, likedByMe.contains(p.getId()))).toList();
         return new PageImpl<>(mapped, pageable, posts.getTotalElements());
     }
 
-    public PostDTO createPost(CreatePostRequest req, Long authUserId) {
+    public PostDTO createPost(CreatePostRequest req, String authUserId) {
         User user = userRepository.findById(authUserId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("User not found: " + authUserId));
+
+        String imageUrl = req.getImageUrl();
+        if (req.getImageBase64() != null && !req.getImageBase64().isBlank()) {
+            try {
+                String mimeType = req.getImageMimeType() != null ? req.getImageMimeType() : "image/jpeg";
+                String base64 = req.getImageBase64().replaceAll("^data:[^;]+;base64,", "");
+                String fileName = storageService.generateFileName("posts", authUserId, mimeType);
+                imageUrl = storageService.uploadBase64Image(base64, fileName, mimeType);
+            } catch (Exception ex) {
+                // storage failure must not fail the post creation
+            }
+        }
+
         Post post = Post.builder()
                 .user(user)
+                .title(req.getTitle())
                 .content(req.getContent())
-                .imageUrl(req.getImageUrl())
+                .imageUrl(imageUrl)
                 .tags(req.getTags() != null ? req.getTags() : new java.util.ArrayList<>())
                 .likeCount(0)
+                .isDeleted(false)
                 .build();
         post = feedRepository.save(post);
         return toDto(post, false);
     }
 
-    public LikeResponse toggleLike(Long postId, Long authUserId) {
+    public LikeResponse toggleLike(String postId, String authUserId) {
         Post post = feedRepository.findById(postId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Post not found: " + postId));
 
@@ -74,14 +91,14 @@ public class FeedService {
     }
 
     @Transactional(readOnly = true)
-    public Page<CommentDTO> getComments(Long postId, Pageable pageable) {
+    public Page<CommentDTO> getComments(String postId, Pageable pageable) {
         if (!feedRepository.existsById(postId)) {
             throw new jakarta.persistence.EntityNotFoundException("Post not found: " + postId);
         }
         return commentRepository.findByPostIdOrderByCreatedAtAsc(postId, pageable).map(this::toCommentDto);
     }
 
-    public CommentDTO addComment(Long postId, String content, Long authUserId) {
+    public CommentDTO addComment(String postId, String content, String authUserId) {
         Post post = feedRepository.findById(postId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Post not found: " + postId));
         User user = userRepository.findById(authUserId)
@@ -95,11 +112,20 @@ public class FeedService {
         return toCommentDto(c);
     }
 
-    public void deletePost(Long postId, Long authUserId) {
+    public void deletePost(String postId, String authUserId) {
         Post post = feedRepository.findById(postId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Post not found: " + postId));
         if (post.getUser() == null || !post.getUser().getId().equals(authUserId)) {
             throw new AccessDeniedException("You can only delete your own posts");
+        }
+        if (post.getImageUrl() != null) {
+            try {
+                String bucket = storageService.getBucket();
+                String fileName = post.getImageUrl()
+                        .replaceAll(".*\\/object\\/public\\/" + java.util.regex.Pattern.quote(bucket) + "\\/", "");
+                storageService.deleteFile(fileName);
+            } catch (Exception ignored) {
+            }
         }
         feedRepository.delete(post);
     }
@@ -111,14 +137,16 @@ public class FeedService {
                 .id(p.getId())
                 .user(PostDTO.UserMini.builder()
                         .id(u != null ? u.getId() : null)
-                        .name(u != null ? u.getName() : null)
+                        .fullName(u != null ? u.getFullName() : null)
                         .build())
+                .title(p.getTitle())
                 .content(p.getContent())
                 .imageUrl(p.getImageUrl())
                 .tags(p.getTags())
                 .likeCount(p.getLikeCount())
                 .commentCount(commentCount)
                 .likedByMe(likedByMe)
+                .isDeleted(p.isDeleted())
                 .createdAt(p.getCreatedAt())
                 .build();
     }
@@ -129,7 +157,7 @@ public class FeedService {
                 .id(c.getId())
                 .user(CommentDTO.UserMini.builder()
                         .id(u != null ? u.getId() : null)
-                        .name(u != null ? u.getName() : null)
+                        .fullName(u != null ? u.getFullName() : null)
                         .build())
                 .content(c.getContent())
                 .createdAt(c.getCreatedAt())

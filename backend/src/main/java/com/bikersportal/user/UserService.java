@@ -3,6 +3,7 @@ package com.bikersportal.user;
 import com.bikersportal.bike.RentalDTO;
 import com.bikersportal.bike.RentalRepository;
 import com.bikersportal.feed.FeedRepository;
+import com.bikersportal.storage.SupabaseStorageService;
 import com.bikersportal.trip.TripRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -20,21 +21,22 @@ public class UserService {
     private final FeedRepository feedRepository;
     private final TripRepository tripRepository;
     private final RentalRepository rentalRepository;
+    private final SupabaseStorageService storageService;
 
     @Transactional(readOnly = true)
-    public UserProfileDTO getProfile(Long userId) {
+    public UserProfileDTO getProfile(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("User not found: " + userId));
         return toProfile(user);
     }
 
-    public UserProfileDTO updateProfile(Long userId, UpdateProfileRequest req, Long authUserId) {
+    public UserProfileDTO updateProfile(String userId, UpdateProfileRequest req, String authUserId) {
         if (!userId.equals(authUserId)) {
             throw new AccessDeniedException("You can only update your own profile");
         }
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("User not found: " + userId));
-        if (req.getName() != null) user.setName(req.getName());
+        if (req.getFullName() != null) user.setFullName(req.getFullName());
         if (req.getUsername() != null) {
             if (!req.getUsername().equals(user.getUsername())
                     && userRepository.existsByUsername(req.getUsername())) {
@@ -44,12 +46,25 @@ public class UserService {
         }
         if (req.getLocation() != null) user.setLocation(req.getLocation());
         if (req.getBio() != null) user.setBio(req.getBio());
+
+        if (req.getAvatarBase64() != null && !req.getAvatarBase64().isBlank()) {
+            try {
+                String mimeType = req.getAvatarMimeType() != null ? req.getAvatarMimeType() : "image/jpeg";
+                String base64 = req.getAvatarBase64().replaceAll("^data:[^;]+;base64,", "");
+                String fileName = storageService.generateFileName("avatars", authUserId, mimeType);
+                String avatarUrl = storageService.uploadBase64Image(base64, fileName, mimeType);
+                user.setAvatarUrl(avatarUrl);
+            } catch (Exception ex) {
+                // avatar upload failure must not fail the profile update
+            }
+        }
+
         user = userRepository.save(user);
         return toProfile(user);
     }
 
     @Transactional(readOnly = true)
-    public Page<RentalDTO> getUserRentals(Long userId, Pageable pageable) {
+    public Page<RentalDTO> getUserRentals(String userId, Pageable pageable) {
         return rentalRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable).map(RentalDTO::from);
     }
 
@@ -60,11 +75,13 @@ public class UserService {
                 org.springframework.data.domain.PageRequest.of(0, 1)).getTotalElements();
         return UserProfileDTO.builder()
                 .id(user.getId())
-                .name(user.getName())
+                .fullName(user.getFullName())
                 .username(user.getUsername())
                 .email(user.getEmail())
+                .role(user.getRole())
                 .location(user.getLocation())
                 .bio(user.getBio())
+                .avatarUrl(user.getAvatarUrl())
                 .createdAt(user.getCreatedAt())
                 .totalPosts(posts)
                 .totalTrips(trips)

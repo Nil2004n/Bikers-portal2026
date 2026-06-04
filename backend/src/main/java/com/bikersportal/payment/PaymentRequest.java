@@ -14,8 +14,8 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PaymentRequest {
-    private Long userId;
-    private Long rentalId;
+    private String userId;
+    private String rentalId;
 
     @NotNull
     @Positive

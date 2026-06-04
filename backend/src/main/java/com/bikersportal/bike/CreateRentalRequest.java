@@ -13,7 +13,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreateRentalRequest {
-    private Long bikeId;
+    private String bikeId;
     private LocalDate startDate;
     private LocalDate endDate;
     private boolean insurance;

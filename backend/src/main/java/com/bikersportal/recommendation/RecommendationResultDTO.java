@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RecommendationResultDTO {
-    private Long bikeId;
+    private String bikeId;
     private String bikeName;
     private int matchScore;
     private String explanation;

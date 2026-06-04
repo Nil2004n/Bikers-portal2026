@@ -6,10 +6,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface TripRepository extends JpaRepository<Trip, Long> {
-    Page<Trip> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
+public interface TripRepository extends JpaRepository<Trip, String> {
+    Page<Trip> findByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
 
-    Page<Trip> findByUserIdAndStatusOrderByCreatedAtDesc(Long userId, TripStatus status, Pageable pageable);
+    Page<Trip> findByUserIdAndStatusOrderByCreatedAtDesc(String userId, TripStatus status, Pageable pageable);
 
-    long countByUserId(Long userId);
+    long countByUserId(String userId);
 }

@@ -13,14 +13,16 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PostDTO {
-    private Long id;
+    private String id;
     private UserMini user;
+    private String title;
     private String content;
     private String imageUrl;
     private List<String> tags;
     private int likeCount;
     private long commentCount;
     private boolean likedByMe;
+    private boolean isDeleted;
     private LocalDateTime createdAt;
 
     @Data
@@ -28,7 +30,7 @@ public class PostDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class UserMini {
-        private Long id;
-        private String name;
+        private String id;
+        private String fullName;
     }
 }

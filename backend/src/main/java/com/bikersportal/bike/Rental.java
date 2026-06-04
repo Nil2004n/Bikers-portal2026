@@ -21,8 +21,9 @@ import java.time.LocalDateTime;
 public class Rental {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "VARCHAR(36)")
+    private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -32,22 +33,23 @@ public class Rental {
     @JoinColumn(name = "bike_id", nullable = false)
     private Bike bike;
 
-    @Column(nullable = false)
+    @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
-    @Column(nullable = false)
+    @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
 
     @Builder.Default
     private boolean insurance = false;
 
-    @Column(precision = 10, scale = 2)
+    @Column(name = "total_cost", precision = 10, scale = 2)
     private BigDecimal totalCost;
 
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private RentalStatus status = RentalStatus.PENDING;
 
+    @Column(name = "created_at", updatable = false)
     @CreationTimestamp
     private LocalDateTime createdAt;
 }

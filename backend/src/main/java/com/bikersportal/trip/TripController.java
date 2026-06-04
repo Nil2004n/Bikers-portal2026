@@ -27,7 +27,7 @@ public class TripController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @AuthenticationPrincipal UserDetails userDetails) {
-        Long authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
+        String authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
         Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, Math.min(size, 100)));
         return ResponseEntity.ok(tripService.getTrips(authUserId, status, pageable));
     }
@@ -36,31 +36,31 @@ public class TripController {
     public ResponseEntity<TripDTO> createTrip(
             @Valid @RequestBody CreateTripRequest req,
             @AuthenticationPrincipal UserDetails userDetails) {
-        Long authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
+        String authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
         return ResponseEntity.status(HttpStatus.CREATED).body(tripService.createTrip(req, authUserId));
     }
 
     @PatchMapping("/{id}/start")
     public ResponseEntity<TripDTO> startTrip(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal UserDetails userDetails) {
-        Long authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
+        String authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
         return ResponseEntity.ok(tripService.startTrip(id, authUserId));
     }
 
     @PatchMapping("/{id}/complete")
     public ResponseEntity<TripDTO> completeTrip(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal UserDetails userDetails) {
-        Long authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
+        String authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
         return ResponseEntity.ok(tripService.completeTrip(id, authUserId));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTrip(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal UserDetails userDetails) {
-        Long authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
+        String authUserId = SecurityUtils.userIdFromPrincipal(userDetails, userRepository);
         tripService.deleteTrip(id, authUserId);
         return ResponseEntity.noContent().build();
     }

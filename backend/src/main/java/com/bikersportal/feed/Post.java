@@ -23,17 +23,21 @@ import java.util.List;
 public class Post {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "VARCHAR(36)")
+    private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Column(length = 500)
+    private String title;
+
     @Column(nullable = false, length = 1000)
     private String content;
 
-    @Column(length = 1000)
+    @Column(name = "image_url", length = 1000)
     private String imageUrl;
 
     @ElementCollection
@@ -42,13 +46,19 @@ public class Post {
     @Builder.Default
     private List<String> tags = new ArrayList<>();
 
-    @Column(nullable = false, columnDefinition = "int default 0")
+    @Column(name = "like_count", nullable = false, columnDefinition = "int default 0")
     @Builder.Default
     private int likeCount = 0;
 
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private boolean isDeleted = false;
+
+    @Column(name = "created_at", updatable = false)
     @CreationTimestamp
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at")
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 

@@ -18,7 +18,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
-import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -46,14 +45,14 @@ class BikeServiceTest {
     @BeforeEach
     void setUp() {
         sampleBike = Bike.builder()
-                .id(1L)
+                .id("bike-001")
                 .name("Trek X1")
                 .brand("Trek")
                 .type(BikeType.MTB)
-                .mode(BikeMode.RENT)
                 .pricePerDay(new BigDecimal("500.00"))
-                .salePrice(new BigDecimal("45000.00"))
+                .buyPrice(new BigDecimal("45000.00"))
                 .status(BikeStatus.AVAILABLE)
+                .isAvailable(true)
                 .build();
     }
 
@@ -81,24 +80,24 @@ class BikeServiceTest {
 
     @Test
     void createRental_bikeAvailable_success() {
-        User user = User.builder().id(10L).email("u@e.com").name("U").build();
-        when(bikeRepository.findById(1L)).thenReturn(Optional.of(sampleBike));
-        when(userRepository.findById(10L)).thenReturn(Optional.of(user));
+        User user = User.builder().id("user-010").email("u@e.com").fullName("U").build();
+        when(bikeRepository.findById("bike-001")).thenReturn(Optional.of(sampleBike));
+        when(userRepository.findById("user-010")).thenReturn(Optional.of(user));
         when(rentalRepository.save(any(Rental.class))).thenAnswer(inv -> {
             Rental r = inv.getArgument(0);
-            r.setId(99L);
+            r.setId("rental-099");
             return r;
         });
 
         CreateRentalRequest req = CreateRentalRequest.builder()
-                .bikeId(1L)
+                .bikeId("bike-001")
                 .startDate(LocalDate.now())
                 .endDate(LocalDate.now().plusDays(2))
                 .insurance(false)
                 .build();
 
-        RentalDTO result = bikeService.createRental(req, 10L);
-        assertThat(result.getId()).isEqualTo(99L);
+        RentalDTO result = bikeService.createRental(req, "user-010");
+        assertThat(result.getId()).isEqualTo("rental-099");
         assertThat(result.getTotalCost()).isEqualByComparingTo(new BigDecimal("1000.00"));
         assertThat(sampleBike.getStatus()).isEqualTo(BikeStatus.RENTED);
         verify(paymentService).initiatePayment(any());
@@ -107,35 +106,34 @@ class BikeServiceTest {
     @Test
     void createRental_bikeNotAvailable_throwsException() {
         sampleBike.setStatus(BikeStatus.RENTED);
-        when(bikeRepository.findById(1L)).thenReturn(Optional.of(sampleBike));
+        when(bikeRepository.findById("bike-001")).thenReturn(Optional.of(sampleBike));
 
         CreateRentalRequest req = CreateRentalRequest.builder()
-                .bikeId(1L)
+                .bikeId("bike-001")
                 .startDate(LocalDate.now())
                 .endDate(LocalDate.now().plusDays(1))
                 .insurance(false)
                 .build();
 
-        assertThatThrownBy(() -> bikeService.createRental(req, 10L))
+        assertThatThrownBy(() -> bikeService.createRental(req, "user-010"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void createRental_insuranceTrue_adds10Percent() {
-        User user = User.builder().id(10L).email("u@e.com").name("U").build();
-        when(bikeRepository.findById(1L)).thenReturn(Optional.of(sampleBike));
-        when(userRepository.findById(10L)).thenReturn(Optional.of(user));
+        User user = User.builder().id("user-010").email("u@e.com").fullName("U").build();
+        when(bikeRepository.findById("bike-001")).thenReturn(Optional.of(sampleBike));
+        when(userRepository.findById("user-010")).thenReturn(Optional.of(user));
         when(rentalRepository.save(any(Rental.class))).thenAnswer(inv -> inv.getArgument(0));
 
         CreateRentalRequest req = CreateRentalRequest.builder()
-                .bikeId(1L)
+                .bikeId("bike-001")
                 .startDate(LocalDate.now())
-                .endDate(LocalDate.now().plusDays(2)) // 2 days * 500 = 1000
+                .endDate(LocalDate.now().plusDays(2))
                 .insurance(true)
                 .build();
 
-        RentalDTO result = bikeService.createRental(req, 10L);
-        // 1000 * 1.10 = 1100
+        RentalDTO result = bikeService.createRental(req, "user-010");
         assertThat(result.getTotalCost()).isEqualByComparingTo(new BigDecimal("1100.00"));
     }
 

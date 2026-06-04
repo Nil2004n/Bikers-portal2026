@@ -10,7 +10,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "post_likes", uniqueConstraints = {
+@Table(name = "likes", uniqueConstraints = {
         @UniqueConstraint(name = "uk_post_user", columnNames = {"post_id", "user_id"})
 })
 @Data
@@ -20,15 +20,17 @@ import java.time.LocalDateTime;
 public class PostLike {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "VARCHAR(36)")
+    private String id;
 
-    @Column(name = "post_id", nullable = false)
-    private Long postId;
+    @Column(name = "post_id", nullable = false, columnDefinition = "VARCHAR(36)")
+    private String postId;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @Column(name = "user_id", nullable = false, columnDefinition = "VARCHAR(36)")
+    private String userId;
 
+    @Column(name = "created_at", updatable = false)
     @CreationTimestamp
     private LocalDateTime createdAt;
 }

@@ -12,12 +12,14 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserProfileDTO {
-    private Long id;
-    private String name;
+    private String id;
+    private String fullName;
     private String username;
     private String email;
+    private String role;
     private String location;
     private String bio;
+    private String avatarUrl;
     private LocalDateTime createdAt;
     private long totalPosts;
     private long totalTrips;

@@ -21,9 +21,11 @@ public class AuthResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class UserInfo {
-        private Long id;
-        private String name;
+        private String id;
+        private String fullName;
+        private String username;
         private String email;
+        private String role;
         private LocalDateTime createdAt;
     }
 
@@ -32,8 +34,10 @@ public class AuthResponse {
                 .token(token)
                 .user(UserInfo.builder()
                         .id(user.getId())
-                        .name(user.getName())
+                        .fullName(user.getFullName())
+                        .username(user.getUsername())
                         .email(user.getEmail())
+                        .role(user.getRole())
                         .createdAt(user.getCreatedAt())
                         .build())
                 .build();
