@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:bikers_test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: sa
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+app:
+  jwt-secret: "test-secret-key-test-secret-key-test-secret-key-test-256-bit"
+  jwt-expiration-ms: 3600000
+  ai-service-url: http://localhost:11434
+  ai-model: llama3
+
+external:
+  payment-gateway-url: http://localhost:9999
+  insurance-url: http://localhost:9998
+  ads-url: http://localhost:9997
